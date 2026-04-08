@@ -14,7 +14,8 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.AppCompat.NoActionBar"> <meta-data android:name="com.robotemi.sdk.metadata.SKU" android:value="v1" />
+        android:theme="@style/Theme.TemiApplication">
+        <meta-data android:name="com.robotemi.sdk.metadata.SKU" android:value="v1" />
 
         <activity
             android:name=".MainActivity"

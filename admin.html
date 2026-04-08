@@ -311,6 +311,8 @@
     onValue(ref(db, "status"), (snap) => {
       lastStatus = snap.val() || "";
       el("temiStatus").textContent = lastStatus || "—";
+      // `showDispatch` depends on status/robot_state; re-render order cards live.
+      renderOrders();
     });
     onValue(ref(db, "location"), (snap) => {
       lastLocation = snap.val() || "";
@@ -319,6 +321,8 @@
     onValue(ref(db, "robot_state"), (snap) => {
       lastRobotState = snap.val() || "";
       el("temiRobotState").textContent = lastRobotState || "—";
+      // `showDispatch` depends on status/robot_state; re-render order cards live.
+      renderOrders();
     });
 
     function temiIsBusy() {
@@ -536,9 +540,11 @@
             ? "Temi is currently moving/preparing"
             : "";
 
+        const rs = String(lastRobotState || "").toLowerCase().trim();
+        const ss = String(lastStatus || "").toLowerCase();
         const showDispatch =
           st === "ongoing" &&
-          String(lastRobotState || "").toLowerCase().trim() === "arrived_pantry";
+          (rs === "arrived_pantry" || ss.includes("arrived_pantry"));
 
         card.innerHTML = `
           <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
