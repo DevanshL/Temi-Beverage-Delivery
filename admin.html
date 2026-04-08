@@ -533,18 +533,16 @@
                     : `<span class="badge text-bg-secondary">${st}</span>`;
 
         const canAccept = st === "pending";
-        const canStartTrip = st === "accepted" && !activeId && !temiIsBusy();
+        const isAtPantry = rs === "arrived_pantry" || ss.includes("arrived_pantry");
+        // Allow starting the next order even if Temi is already waiting at pantry.
+        const canStartTrip = st === "accepted" && !activeId && (!temiIsBusy() || isAtPantry);
         const startTripDisabledReason = activeId
           ? "Temi is busy with another active order"
           : temiIsBusy()
             ? "Temi is currently moving/preparing"
             : "";
 
-        const rs = String(lastRobotState || "").toLowerCase().trim();
-        const ss = String(lastStatus || "").toLowerCase();
-        const showDispatch =
-          st === "ongoing" &&
-          (rs === "arrived_pantry" || ss.includes("arrived_pantry"));
+        const showDispatch = st === "ongoing" && isAtPantry;
 
         card.innerHTML = `
           <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
@@ -643,8 +641,13 @@
           return;
         }
         if (temiIsBusy()) {
-          alert("Temi is currently moving/preparing. Try again when idle.");
-          return;
+          const rs = String(lastRobotState || "").toLowerCase().trim();
+          const ss = String(lastStatus || "").toLowerCase();
+          const isAtPantry = rs === "arrived_pantry" || ss.includes("arrived_pantry");
+          if (!isAtPantry) {
+            alert("Temi is currently moving/preparing. Try again when idle.");
+            return;
+          }
         }
         const o = orders[id];
         if (!o) return;
@@ -659,9 +662,17 @@
           // Track the active order so Temi can mark it complete on delivery OK.
           await set(ref(db, "active_order_id"), id);
 
-          // Start pickup leg to pantry
-          await set(ref(db, "location"), "pantry");
-          await set(ref(db, "status"), "admin_sent_to_pantry");
+          const rs2 = String(lastRobotState || "").toLowerCase().trim();
+          const ss2 = String(lastStatus || "").toLowerCase();
+          const isAtPantry2 = rs2 === "arrived_pantry" || ss2.includes("arrived_pantry");
+          if (isAtPantry2) {
+            // Already at pantry: don't re-send a pantry command; operator can dispatch to gaming.
+            await set(ref(db, "status"), "admin_started_at_pantry");
+          } else {
+            // Start pickup leg to pantry
+            await set(ref(db, "location"), "pantry");
+            await set(ref(db, "status"), "admin_sent_to_pantry");
+          }
         } catch (err) {
           console.error(err);
           alert("Start trip failed. Check Firebase rules.");
