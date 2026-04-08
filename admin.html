@@ -543,6 +543,9 @@
             : "";
 
         const showDispatch = st === "ongoing" && isAtPantry;
+        // If Temi is already waiting at pantry and an accepted order is ready,
+        // show a single action to start + send to gaming (reduces clicks).
+        const showServeFromPantry = st === "accepted" && isAtPantry && !activeId;
 
         card.innerHTML = `
           <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
@@ -555,6 +558,7 @@
               <button class="btn btn-sm btn-outline-secondary" disabled>Decline</button>
               <button class="btn btn-sm btn-accent text-white btn-start" data-id="${id}" ${canStartTrip ? "" : "disabled"} title="${startTripDisabledReason}">Start trip</button>
               ${showDispatch ? `<button class="btn btn-sm btn-outline-info btn-dispatch" data-id="${id}">Accept</button>` : ``}
+              ${showServeFromPantry ? `<button class="btn btn-sm btn-outline-info btn-serve" data-id="${id}" title="Start this order and send Temi to gaming">Accept</button>` : ``}
             </div>
           </div>
         `;
@@ -607,9 +611,10 @@
       const accept = t.closest && t.closest(".btn-accept");
       const start = t.closest && t.closest(".btn-start");
       const dispatch = t.closest && t.closest(".btn-dispatch");
-      if (!accept && !start && !dispatch) return;
+      const serve = t.closest && t.closest(".btn-serve");
+      if (!accept && !start && !dispatch && !serve) return;
 
-      const id = (accept || start || dispatch).dataset.id;
+      const id = (accept || start || dispatch || serve).dataset.id;
       if (!id) return;
 
       if (accept) {
@@ -691,6 +696,37 @@
           alert("Dispatch failed. Check Firebase rules.");
         } finally {
           dispatch.disabled = false;
+        }
+      }
+
+      // One-click serve when Temi is already waiting at pantry:
+      // accepted -> ongoing + active_order_id, then send to gaming.
+      if (serve) {
+        if (activeOrderIdNow()) {
+          alert("Temi is busy. Serve the next order after current one completes.");
+          return;
+        }
+        const rs = String(lastRobotState || "").toLowerCase().trim();
+        const ss = String(lastStatus || "").toLowerCase();
+        const isAtPantry = rs === "arrived_pantry" || ss.includes("arrived_pantry");
+        if (!isAtPantry) {
+          alert("Temi is not at pantry yet. Use Start trip first.");
+          return;
+        }
+        serve.disabled = true;
+        try {
+          await update(ref(db, `orders/${id}`), {
+            status: "ongoing",
+            startedAt: serverTimestamp(),
+          });
+          await set(ref(db, "active_order_id"), id);
+          await set(ref(db, "location"), "gaming");
+          await set(ref(db, "status"), "admin_dispatched_to_gaming");
+        } catch (err) {
+          console.error(err);
+          alert("Serve failed. Check Firebase rules.");
+        } finally {
+          serve.disabled = false;
         }
       }
     });
