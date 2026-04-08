@@ -533,6 +533,8 @@
                     : `<span class="badge text-bg-secondary">${st}</span>`;
 
         const canAccept = st === "pending";
+        const rs = String(lastRobotState || "").toLowerCase().trim();
+        const ss = String(lastStatus || "").toLowerCase();
         const isAtPantry = rs === "arrived_pantry" || ss.includes("arrived_pantry");
         // Allow starting the next order even if Temi is already waiting at pantry.
         const canStartTrip = st === "accepted" && !activeId && (!temiIsBusy() || isAtPantry);
