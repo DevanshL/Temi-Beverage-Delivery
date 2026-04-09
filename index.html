@@ -304,19 +304,33 @@
       };
     }
 
-    /**
-     * Pick a natural US English voice (prefer Samantha / female-friendly).
-     * Names differ by OS (iOS vs Android vs Windows) — we match case-insensitively
-     */
-    function pickEnglishVoice() {
-      const synth = window.speechSynthesis;
-      if (!synth) return null;
-      const voices = synth.getVoices();
+    // ---- Voice system (simpler & more reliable on mobile) ----
+
+    function showIntroTextBanner() {
+      const banner = el("introBanner");
+      const textEl = el("introBannerText");
+      if (banner && textEl) {
+        textEl.textContent = INTRO_TEXT;
+        banner.classList.remove("d-none");
+      }
+    }
+
+    function setIntroVoiceHint(text) {
+      const hint = el("introVoiceHint");
+      if (!hint) return;
+      if (!text) {
+        hint.classList.add("d-none");
+        hint.textContent = "";
+        return;
+      }
+      hint.textContent = text;
+      hint.classList.remove("d-none");
+    }
+
+    function pickVoice(voices) {
       if (!voices || !voices.length) return null;
-
       const norm = (s) => (s || "").toLowerCase();
-
-      const exactPreferred = [
+      const exact = [
         "Samantha",
         "Google US English",
         "Microsoft Zira - English (United States)",
@@ -326,33 +340,11 @@
         "Tessa",
         "Victoria",
       ];
-      for (const name of exactPreferred) {
-        const want = norm(name);
-        const found = voices.find((v) => norm(v.name) === want);
-        if (found) return found;
+      for (const name of exact) {
+        const v = voices.find((vv) => norm(vv.name) === norm(name));
+        if (v) return v;
       }
-
-      const includePreferred = [
-        "samantha",
-        "female",
-        "zira",
-        "aria",
-        "jenny",
-        "michelle",
-        "victoria",
-        "karen",
-        "moira",
-        "tessa",
-      ];
-      const enFirst = voices.filter(
-        (v) => v.lang && norm(v.lang).startsWith("en")
-      );
-      for (const sub of includePreferred) {
-        const found = enFirst.find((v) => norm(v.name).includes(sub));
-        if (found) return found;
-      }
-
-      const maleHint = [
+      const maleWords = [
         "male",
         "daniel",
         "fred",
@@ -364,202 +356,122 @@
         "james",
         "mark",
       ];
-      const isMaleish = (v) =>
-        maleHint.some((h) => norm(v.name).includes(h));
-
-      const enUs = enFirst.filter((v) => norm(v.lang).startsWith("en-us"));
-      const enUsOk = enUs.filter((v) => !isMaleish(v));
-      if (enUsOk.length) return enUsOk[0];
-
-      const enOk = enFirst.filter((v) => !isMaleish(v));
-      if (enOk.length) return enOk[0];
-
-      return enUs[0] || enFirst[0] || voices[0];
+      const isMale = (v) => maleWords.some((w) => norm(v.name).includes(w));
+      const en = voices.filter((v) => v.lang && norm(v.lang).startsWith("en"));
+      const enUs = en.filter((v) => norm(v.lang).startsWith("en-us"));
+      return (
+        enUs.find((v) => !isMale(v)) ||
+        en.find((v) => !isMale(v)) ||
+        enUs[0] ||
+        en[0] ||
+        voices[0]
+      );
     }
 
-    function showIntroTextBanner() {
-      const banner = el("introBanner");
-      const textEl = el("introBannerText");
-      if (banner && textEl) {
-        textEl.textContent = INTRO_TEXT;
-        banner.classList.remove("d-none");
-      }
-    }
+    let welcomeSpoken = false;
 
-    let lastIntroSpeakAt = 0;
-    /** Prevents the auto-welcome from firing twice (timers + voiceschanged used to queue duplicate utterances). */
-    let welcomeAutoPlayed = false;
-
-    /** Chrome / Brave / Android often leave `speechSynthesis` paused until `resume()` is called repeatedly. */
-    function createSpeechResumeHack(synth) {
-      const endBy = Date.now() + 20000;
+    function startResumeHack(synth) {
+      const end = Date.now() + 25000;
       const id = setInterval(() => {
         try {
-          if (Date.now() > endBy) {
+          if (Date.now() > end || (!synth.speaking && !synth.pending)) {
             clearInterval(id);
             return;
           }
-          if (synth.speaking || synth.pending) {
-            if (typeof synth.resume === "function") synth.resume();
-          } else {
-            clearInterval(id);
-          }
+          if (typeof synth.resume === "function") synth.resume();
         } catch {
           clearInterval(id);
         }
       }, 100);
-      return () => {
-        try {
-          clearInterval(id);
-        } catch {
-          /* ignore */
-        }
-      };
+      return () => clearInterval(id);
     }
 
-    /**
-     * We prefer picking a natural-sounding female English voice when the list is available.
-     * On some mobile browsers, the voice list loads async; we wait briefly before speaking so
-     * the first play matches the "Play again" experience.
-     */
-    function shouldWaitForVoicesFirst() {
-      const ua = navigator.userAgent || "";
-      // Desktop usually loads fast; mobile often loads late.
-      return /Android|iPhone|iPad|iPod/i.test(ua);
-    }
-
-    function setIntroVoiceHint(text) {
-      let hint = el("introVoiceHint");
-      if (!hint) return;
-      if (!text) {
-        hint.classList.add("d-none");
-        hint.textContent = "";
+    function doSpeak(forceReplay) {
+      const synth = window.speechSynthesis;
+      if (!synth) {
+        showIntroTextBanner();
         return;
       }
-      hint.textContent = text;
-      hint.classList.remove("d-none");
+
+      if (!forceReplay && welcomeSpoken) return;
+
+      // Avoid calling cancel() inside onerror retry chains; keep it simple.
+      try {
+        synth.cancel();
+      } catch {
+        /* ignore */
+      }
+
+      const u = new SpeechSynthesisUtterance(INTRO_TEXT);
+      u.lang = "en-US";
+      u.rate = 0.95;
+      u.volume = 1;
+      u.pitch = 1.08;
+
+      const voices = synth.getVoices();
+      const picked = pickVoice(voices);
+      if (picked) u.voice = picked;
+
+      let stopHack = null;
+
+      u.onstart = () => {
+        if (!forceReplay) welcomeSpoken = true;
+        stopHack = startResumeHack(synth);
+        setIntroVoiceHint("🔊 Playing… (turn up media volume)");
+      };
+
+      u.onend = () => {
+        if (stopHack) stopHack();
+        setIntroVoiceHint("");
+      };
+
+      u.onerror = (ev) => {
+        if (stopHack) stopHack();
+        const code = ev?.error || "";
+        if (code === "canceled" || code === "interrupted") return;
+        showIntroTextBanner();
+        setTimeout(() => {
+          if (!synth.speaking && !synth.pending) {
+            setIntroVoiceHint(
+              "No sound? Tap 🔊 Play again and turn up media volume. On Brave, lower Shields for this site."
+            );
+          }
+        }, 1200);
+      };
+
+      synth.speak(u);
     }
 
-    // Prime voice list ASAP so the first tap can pick the preferred voice.
-    let voicesReadyOnce = false;
+    // One-time voiceschanged: prime voices early so the first tap can pick the preferred voice.
     try {
       if (window.speechSynthesis) {
         window.speechSynthesis.getVoices();
-        window.speechSynthesis.addEventListener(
-          "voiceschanged",
-          () => {
-            voicesReadyOnce = true;
-          },
-          { once: true }
-        );
+        window.speechSynthesis.addEventListener("voiceschanged", () => {}, {
+          once: true,
+        });
       }
     } catch {
       /* ignore */
     }
 
-    /** @param {boolean} forceReplay — true only for "Play again" (always speaks once per tap) */
     function speakIntro(forceReplay = false) {
-      const synth = window.speechSynthesis;
-      if (!synth) {
-        showIntroTextBanner();
-        setIntroVoiceHint(
-          "Voice is not supported in this browser — read the welcome text above."
-        );
-        return;
-      }
-
-      let showFailTimer = null;
-      const trySpeak = (plainLangOnly = false, ignoreDebounce = false) => {
-        /* Auto path: speak at most once per page visit. Replay button bypasses this. */
-        if (!forceReplay && welcomeAutoPlayed) {
-          return;
-        }
-        const now = Date.now();
-        if (!ignoreDebounce && !forceReplay && now - lastIntroSpeakAt < 700) {
-          return;
-        }
-        lastIntroSpeakAt = now;
-        try {
-          synth.cancel();
-          if (typeof synth.resume === "function") {
-            synth.resume();
-          }
-          const u = new SpeechSynthesisUtterance(INTRO_TEXT);
-          u.lang = "en-US";
-          u.rate = 0.95;
-          u.volume = 1;
-          u.pitch = 1.08;
-          const voiceList = synth.getVoices();
-          const voice =
-            !plainLangOnly && voiceList.length ? pickEnglishVoice() : null;
-          if (voice) u.voice = voice;
-
-          const stopHack = createSpeechResumeHack(synth);
-
-          u.onstart = () => {
-            if (!forceReplay) welcomeAutoPlayed = true;
-            if (showFailTimer) {
-              clearTimeout(showFailTimer);
-              showFailTimer = null;
-            }
-            setIntroVoiceHint("🔊 Playing welcome… (turn media volume up)");
-          };
-          u.onerror = (ev) => {
-            stopHack();
-            /* Second trySpeak() calls synth.cancel() — the replaced utterance errors with "canceled"; not a user-facing failure. */
-            const code = ev.error || "";
-            if (code === "canceled" || code === "interrupted") {
-              return;
-            }
-            console.warn("speechSynthesis utterance error", ev);
-            if (!plainLangOnly && voiceList.length) {
-              welcomeAutoPlayed = false;
-              trySpeak(true, true);
-              return;
-            }
-            // Avoid a UI "flash" when the retry succeeds quickly.
-            if (showFailTimer) clearTimeout(showFailTimer);
-            showFailTimer = setTimeout(() => {
-              setIntroVoiceHint(
-                "Could not play voice. Try 🔊 Play again, raise media volume, or in Brave: Shields → lower for this site."
-              );
-            }, 650);
-            showIntroTextBanner();
-          };
-          u.onend = () => {
-            stopHack();
-            if (showFailTimer) {
-              clearTimeout(showFailTimer);
-              showFailTimer = null;
-            }
-            setIntroVoiceHint("");
-          };
-
-          synth.speak(u);
-        } catch (e) {
-          console.warn("speechSynthesis.speak failed", e);
-          setIntroVoiceHint(
-            "Voice failed. Use 🔊 Play again or read the text above. On Brave, try lowering Shields."
-          );
-          showIntroTextBanner();
-        }
-      };
-
       showIntroTextBanner();
       setIntroVoiceHint("");
 
-      trySpeak(false);
-      /* When voices load async, wait for list — but do NOT call trySpeak if an utterance is already queued (avoids cancel + false "could not play"). */
-      if (synth.getVoices().length === 0) {
-        synth.addEventListener(
-          "voiceschanged",
-          () => {
-            if (welcomeAutoPlayed) return;
-            if (synth.speaking || synth.pending) return;
-            trySpeak(false);
-          },
-          { once: true }
-        );
+      const synth = window.speechSynthesis;
+      if (!synth) {
+        setIntroVoiceHint("Voice not supported in this browser.");
+        return;
+      }
+
+      const voices = synth.getVoices();
+      if (voices.length > 0) {
+        doSpeak(forceReplay);
+      } else {
+        const handler = () => {
+          doSpeak(forceReplay);
+        };
+        synth.addEventListener("voiceschanged", handler, { once: true });
       }
     }
 
