@@ -386,7 +386,7 @@
       return () => clearInterval(id);
     }
 
-    function doSpeak(forceReplay) {
+    function doSpeak(forceReplay, voiceOverride) {
       const synth = window.speechSynthesis;
       if (!synth) {
         showIntroTextBanner();
@@ -395,7 +395,7 @@
 
       if (!forceReplay && welcomeSpoken) return;
 
-      // Avoid calling cancel() inside onerror retry chains; keep it simple.
+      // Keep it simple; do not cancel inside onerror.
       try {
         synth.cancel();
       } catch {
@@ -409,7 +409,7 @@
       u.pitch = 1.08;
 
       const voices = synth.getVoices();
-      const picked = pickVoice(voices);
+      const picked = voiceOverride || (voices.length ? pickVoice(voices) : null);
       if (picked) u.voice = picked;
 
       let stopHack = null;
@@ -436,7 +436,7 @@
               "No sound? Tap 🔊 Play again and turn up media volume. On Brave, lower Shields for this site."
             );
           }
-        }, 1200);
+        }, 1500);
       };
 
       synth.speak(u);
@@ -464,14 +464,17 @@
         return;
       }
 
-      const voices = synth.getVoices();
-      if (voices.length > 0) {
-        doSpeak(forceReplay);
-      } else {
-        const handler = () => {
-          doSpeak(forceReplay);
-        };
-        synth.addEventListener("voiceschanged", handler, { once: true });
+      // KEY: Always speak immediately inside the gesture, even if voices aren't loaded yet.
+      // On Android Chrome/Brave, waiting for voiceschanged can lose the gesture window.
+      doSpeak(forceReplay, null);
+
+      // Prime voices for better replay quality later.
+      try {
+        if (!synth.getVoices().length) {
+          synth.addEventListener("voiceschanged", () => {}, { once: true });
+        }
+      } catch {
+        /* ignore */
       }
     }
 
