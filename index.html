@@ -387,6 +387,7 @@
     }
 
     let welcomeSpoken = false;
+    let voiceAttemptSeq = 0;
 
     function startResumeHack(synth) {
       const end = Date.now() + 25000;
@@ -428,6 +429,7 @@
       if (picked) u.voice = picked;
 
       let stopHack = null;
+      const attemptId = ++voiceAttemptSeq;
 
       u.onstart = () => {
         if (!forceReplay) welcomeSpoken = true;
@@ -449,9 +451,12 @@
         showIntroTextBanner();
         debugVoice("utterance error", { code });
         setTimeout(() => {
+          // Only show if this is still the latest attempt AND the intro never started.
+          if (attemptId !== voiceAttemptSeq) return;
+          if (welcomeSpoken) return;
           if (!synth.speaking && !synth.pending) {
             setIntroVoiceHint(
-              "No sound? Tap 🔊 Play again and turn up media volume. On Brave, lower Shields for this site."
+              "No sound? Turn up MEDIA volume and tap 🔊 Play again. If still silent: Brave Shields ↓ for this site, and ensure your phone has Text-to-Speech enabled."
             );
           }
         }, 1500);
