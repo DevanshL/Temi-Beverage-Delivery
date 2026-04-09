@@ -188,6 +188,7 @@
         <p class="mb-0 small flex-grow-1" id="introBannerText"></p>
         <button type="button" class="btn btn-sm btn-outline-info" id="btnReplayIntro" title="Replay voice">🔊 Play again</button>
       </div>
+      <p id="introVoiceHint" class="mb-0 mt-2 small text-info d-none" aria-live="polite"></p>
     </div>
 
     <div id="editOrderBanner" class="alert border mb-3 d-none" role="status">
@@ -389,21 +390,69 @@
     /** Prevents the auto-welcome from firing twice (timers + voiceschanged used to queue duplicate utterances). */
     let welcomeAutoPlayed = false;
 
+    /** Chrome / Brave / Android often leave `speechSynthesis` paused until `resume()` is called repeatedly. */
+    function createSpeechResumeHack(synth) {
+      const endBy = Date.now() + 20000;
+      const id = setInterval(() => {
+        try {
+          if (Date.now() > endBy) {
+            clearInterval(id);
+            return;
+          }
+          if (synth.speaking || synth.pending) {
+            if (typeof synth.resume === "function") synth.resume();
+          } else {
+            clearInterval(id);
+          }
+        } catch {
+          clearInterval(id);
+        }
+      }, 100);
+      return () => {
+        try {
+          clearInterval(id);
+        } catch {
+          /* ignore */
+        }
+      };
+    }
+
+    /** Picking a specific `voice` breaks silently on some Brave/Android engines; `lang` alone is safer. */
+    function preferSpeechLangOnly() {
+      const ua = navigator.userAgent || "";
+      return /Android|iPhone|iPad|iPod|Brave/i.test(ua);
+    }
+
+    function setIntroVoiceHint(text) {
+      let hint = el("introVoiceHint");
+      if (!hint) return;
+      if (!text) {
+        hint.classList.add("d-none");
+        hint.textContent = "";
+        return;
+      }
+      hint.textContent = text;
+      hint.classList.remove("d-none");
+    }
+
     /** @param {boolean} forceReplay — true only for "Play again" (always speaks once per tap) */
     function speakIntro(forceReplay = false) {
       const synth = window.speechSynthesis;
       if (!synth) {
         showIntroTextBanner();
+        setIntroVoiceHint(
+          "Voice is not supported in this browser — read the welcome text above."
+        );
         return;
       }
 
-      const trySpeak = () => {
+      const trySpeak = (plainLangOnly = false, ignoreDebounce = false) => {
         /* Auto path: speak at most once per page visit. Replay button bypasses this. */
         if (!forceReplay && welcomeAutoPlayed) {
           return;
         }
         const now = Date.now();
-        if (!forceReplay && now - lastIntroSpeakAt < 700) {
+        if (!ignoreDebounce && !forceReplay && now - lastIntroSpeakAt < 700) {
           return;
         }
         lastIntroSpeakAt = now;
@@ -417,30 +466,58 @@
           u.rate = 0.95;
           u.volume = 1;
           u.pitch = 1.08;
-          /* Do not wait for getVoices() — on Safari/iOS voices load async and an early return
-           * meant nothing ever spoke; default engine still works with u.lang. */
           const voiceList = synth.getVoices();
-          const voice = voiceList.length ? pickEnglishVoice() : null;
+          const langOnly = plainLangOnly || preferSpeechLangOnly();
+          const voice = !langOnly && voiceList.length ? pickEnglishVoice() : null;
           if (voice) u.voice = voice;
-          u.onerror = () => {
+
+          const stopHack = createSpeechResumeHack(synth);
+
+          u.onstart = () => {
+            if (!forceReplay) welcomeAutoPlayed = true;
+            setIntroVoiceHint("🔊 Playing welcome… (turn media volume up)");
+          };
+          u.onerror = (ev) => {
+            console.warn("speechSynthesis utterance error", ev);
+            stopHack();
+            if (!plainLangOnly && voiceList.length) {
+              welcomeAutoPlayed = false;
+              trySpeak(true, true);
+              return;
+            }
+            setIntroVoiceHint(
+              "Could not play voice. Try 🔊 Play again, raise media volume, or in Brave: Shields → lower for this site."
+            );
             showIntroTextBanner();
           };
+          u.onend = () => {
+            stopHack();
+            setIntroVoiceHint("");
+          };
+
           synth.speak(u);
-          if (!forceReplay) {
-            welcomeAutoPlayed = true;
-          }
         } catch (e) {
           console.warn("speechSynthesis.speak failed", e);
+          setIntroVoiceHint(
+            "Voice failed. Use 🔊 Play again or read the text above. On Brave, try lowering Shields."
+          );
           showIntroTextBanner();
         }
       };
 
       showIntroTextBanner();
+      setIntroVoiceHint("");
 
-      trySpeak();
-      /* When voices load later, speak once more with a chosen voice (guarded by welcomeAutoPlayed). */
+      trySpeak(false);
+      /* When voices load later, retry once if nothing started yet (avoids double-queue). */
       if (synth.getVoices().length === 0) {
-        synth.addEventListener("voiceschanged", () => trySpeak(), { once: true });
+        synth.addEventListener(
+          "voiceschanged",
+          () => {
+            if (!welcomeAutoPlayed) trySpeak(false);
+          },
+          { once: true }
+        );
       }
     }
 
