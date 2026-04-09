@@ -456,6 +456,8 @@
         // the very first speak sometimes fails but a replay succeeds immediately after.
         if (!forceReplay && introAutoRetriedAttemptId !== attemptId) {
           introAutoRetriedAttemptId = attemptId;
+          // Avoid scary “blocked” hints; we retry silently and only show troubleshooting if retry also fails.
+          setIntroVoiceHint("Retrying audio…");
           setTimeout(() => {
             // still latest attempt and still not started?
             if (attemptId !== voiceAttemptSeq) return;
