@@ -21,9 +21,9 @@ The Temi screen is a single full-screen page (no navigation UI) with:
 - **`index.html`** (project root): customer **QR / mobile web** interface.
 - **Voice intro**: Web Speech API after the initial **tap-to-start** overlay (browser policy). Includes a **Play again** button.
 - **Catalog**: **5 beverages + 5 snacks** (Coke Can, Water, Living Labs rack snacks, etc.) with **picture** (emoji or optional `imageUrl` from Firebase), label, and **+ / −** quantity.
-- **Submit**: creates `orders/{orderId}` with `status: "pending"` and a `sessionId`, sets `admin/notification_pending = true` and `admin/latest_order_id = {orderId}`.
+- **Submit**: atomically checks and decrements `inventory/{sku}/quantity` for the cart (same transaction pattern as admin inventory edits), then creates `orders/{orderId}` with `status: "pending"`, `inventoryDebitedAt`, and `sessionId`, and sets `admin/notification_pending = true` and `admin/latest_order_id = {orderId}`. Stock is locked at submit time (like many food-delivery apps), not when staff accepts.
 - **Order queue UI**: users can submit multiple orders; “Your orders” shows queued/accepted/cancelled status.
-- **Modify**: queued orders (`pending`) can be edited before admin accepts (updates `orders/{orderId}/items` and keeps `status: "pending"`). Cancel button was removed from the UI.
+- **Modify**: queued orders (`pending`) can be edited before admin accepts; inventory is adjusted by **delta** (old vs new line items) in a transaction, then `orders/{orderId}` is updated with `status: "pending"` and `inventoryDebitedAt`. Legacy orders without `inventoryDebitedAt` debit the full cart on the first save. Cancel button was removed from the UI.
 - **Waiting/accepted UX**: non-blocking footer status (e.g. “N orders in queue — waiting for admin”), and order cards update once admin changes status to `ongoing` / `accepted` / `complete`.
 - **Inventory seed**: import **`database/inventory-seed.json`** into Realtime Database (or merge `inventory` + `admin` nodes). The page also falls back to embedded defaults if `inventory` is unreadable.
 
@@ -37,11 +37,9 @@ The Temi screen is a single full-screen page (no navigation UI) with:
   - shows **Out of Stock** when quantity is 0
 - **Orders tab**:
   - shows current and past orders (items, quantities, status)
-  - **Accept** (Option A) reserves inventory and marks accepted **without moving Temi**:
-    - atomically decrements `inventory/{sku}/quantity` for all items in the order (single transaction on `inventory/`)
-    - `orders/{orderId}/status = "accepted"`
-    - `orders/{orderId}/inventoryReservedAt = serverTimestamp()`
-    - If stock is insufficient, Accept fails and nothing is decremented.
+  - **Accept** marks accepted **without moving Temi** (inventory was already debited when the customer submitted):
+    - `orders/{orderId}/status = "accepted"` and `acceptedAt`
+    - **Legacy** orders without `inventoryDebitedAt` still run a one-time full-line reserve (same atomic transaction as before) so older pending orders remain valid.
   - **Start trip** starts movement (only when no order is `ongoing` and Temi isn’t busy):
     - `orders/{orderId}/status = "ongoing"`
     - sets `active_order_id = "{orderId}"` so Temi can mark it complete after guest OK
@@ -75,8 +73,8 @@ The Temi screen is a single full-screen page (no navigation UI) with:
 
 ## Intended operator flow
 
-1. **Customer submits order** (`index.html`) → creates `orders/{orderId}` with `status="pending"` and sets `admin/notification_pending=true`.
-2. **Admin accepts** (`admin.html`) → reserves inventory (atomically decrements `inventory/*/quantity`) and sets `orders/{orderId}/status="accepted"` (**no movement yet**).
+1. **Customer submits order** (`index.html`) → stock is decremented atomically, then creates `orders/{orderId}` with `status="pending"` and `inventoryDebitedAt`, and sets `admin/notification_pending=true`.
+2. **Admin accepts** (`admin.html`) → sets `orders/{orderId}/status="accepted"` (**no movement yet**; no second inventory decrement for orders that already have `inventoryDebitedAt`).
 3. **Admin starts trip** → marks this as the active order and starts the pickup leg:
    - `orders/{orderId}/status="ongoing"`
    - `active_order_id = "{orderId}"`

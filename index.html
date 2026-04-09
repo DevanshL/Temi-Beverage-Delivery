@@ -222,6 +222,7 @@
       set,
       get,
       update,
+      runTransaction,
       serverTimestamp,
     } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
 
@@ -826,19 +827,124 @@
       }
     }
 
+    /** Positive counts only (SKU → qty to remove from stock). */
+    function positiveItemCounts(items) {
+      const out = {};
+      for (const [k, v] of Object.entries(items || {})) {
+        const n = Number(v) || 0;
+        if (n > 0) out[k] = n;
+      }
+      return out;
+    }
+
+    /** Signed delta: +n take n from stock, −n return n to stock. */
+    function negateInventoryDelta(delta) {
+      const out = {};
+      for (const [k, v] of Object.entries(delta || {})) {
+        const n = Number(v) || 0;
+        if (n !== 0) out[k] = -n;
+      }
+      return out;
+    }
+
+    function computeItemsDelta(oldItems, newItems) {
+      const keys = new Set([
+        ...Object.keys(oldItems || {}),
+        ...Object.keys(newItems || {}),
+      ]);
+      const delta = {};
+      for (const k of keys) {
+        const old = Number(oldItems?.[k]) || 0;
+        const neu = Number(newItems?.[k]) || 0;
+        const d = neu - old;
+        if (d !== 0) delta[k] = d;
+      }
+      return delta;
+    }
+
+    /**
+     * Single transaction on `inventory/`: apply signed per-SKU deltas atomically.
+     * +n removes n from stock; −n returns n to stock.
+     */
+    async function applyInventoryDeltaOrThrow(deltaMap) {
+      const entries = Object.entries(deltaMap || {}).filter(
+        ([, d]) => Number(d) !== 0
+      );
+      if (entries.length === 0) return;
+
+      let failReason = null;
+      const res = await runTransaction(ref(db, "inventory"), (inv) => {
+        if (!inv || typeof inv !== "object") {
+          failReason = "Inventory not available.";
+          return;
+        }
+        for (const [sku, dRaw] of entries) {
+          const d = Number(dRaw) || 0;
+          if (d <= 0) continue;
+          const q = Number(inv?.[sku]?.quantity) || 0;
+          if (q < d) {
+            const name = inv?.[sku]?.name || sku;
+            failReason = `${name} is out of stock (need ${d} more, have ${q}).`;
+            return;
+          }
+        }
+        for (const [sku, dRaw] of entries) {
+          const d = Number(dRaw) || 0;
+          if (d === 0) continue;
+          const q = Number(inv?.[sku]?.quantity) || 0;
+          inv[sku] = inv[sku] || {};
+          inv[sku].quantity = q - d;
+        }
+        return inv;
+      });
+
+      if (!res.committed) {
+        throw new Error(failReason || "Could not update inventory.");
+      }
+    }
+
     async function submitOrder(db) {
-      const items = { ...cart };
-      const keys = Object.keys(items).filter((k) => items[k] > 0);
+      const items = positiveItemCounts(cart);
+      const keys = Object.keys(items);
       if (keys.length === 0) return;
 
       try {
         if (editingOrderId) {
           const oid = editingOrderId;
-          await update(ref(db, "orders/" + oid), {
-            items,
-            status: "pending",
-            updatedAt: serverTimestamp(),
-          });
+          const snap = await get(ref(db, "orders/" + oid));
+          const prev = snap.val() || {};
+          const oldItems = prev.items || {};
+          const hadDebit = !!prev.inventoryDebitedAt;
+
+          let delta;
+          if (!hadDebit) {
+            delta = items;
+          } else {
+            delta = computeItemsDelta(oldItems, items);
+          }
+
+          if (Object.keys(delta).length > 0) {
+            await applyInventoryDeltaOrThrow(delta);
+          }
+
+          try {
+            await update(ref(db, "orders/" + oid), {
+              items,
+              status: "pending",
+              updatedAt: serverTimestamp(),
+              inventoryDebitedAt: serverTimestamp(),
+            });
+          } catch (writeErr) {
+            if (Object.keys(delta).length > 0) {
+              try {
+                await applyInventoryDeltaOrThrow(negateInventoryDelta(delta));
+              } catch (rb) {
+                console.error("Inventory rollback failed", rb);
+              }
+            }
+            throw writeErr;
+          }
+
           await set(ref(db, "admin/notification_pending"), true);
           await set(ref(db, "admin/latest_order_id"), oid);
           endEditOrder();
@@ -858,9 +964,23 @@
           sessionId,
           createdAt: serverTimestamp(),
           source: "customer_web",
+          inventoryDebitedAt: serverTimestamp(),
         };
 
-        await set(newRef, payload);
+        const take = { ...items };
+        await applyInventoryDeltaOrThrow(take);
+
+        try {
+          await set(newRef, payload);
+        } catch (writeErr) {
+          try {
+            await applyInventoryDeltaOrThrow(negateInventoryDelta(take));
+          } catch (rb) {
+            console.error("Inventory rollback failed", rb);
+          }
+          throw writeErr;
+        }
+
         await set(ref(db, "admin/notification_pending"), true);
         await set(ref(db, "admin/latest_order_id"), orderId);
         addOrderToQueue(orderId);
@@ -869,7 +989,10 @@
         renderCatalog();
       } catch (e) {
         console.error(e);
-        alert("Could not submit order. Check connection and Firebase rules.");
+        alert(
+          e?.message ||
+            "Could not submit order. Check connection and Firebase rules."
+        );
       }
     }
 
