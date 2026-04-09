@@ -152,6 +152,26 @@
     .order-row.accepted { border-color: rgba(34, 197, 94, 0.45); }
     .order-row.cancelled { opacity: 0.75; border-color: rgba(248, 113, 113, 0.35); }
     #editOrderBanner { background: rgba(234, 179, 8, 0.15) !important; border-color: rgba(234, 179, 8, 0.4) !important; color: #fef3c7 !important; }
+    /* In-app message (replaces window.alert for on-brand UX) */
+    #appDialog {
+      z-index: 400;
+      cursor: pointer;
+    }
+    #appDialog .app-dialog-card {
+      cursor: default;
+      max-width: min(420px, calc(100vw - 32px));
+      text-align: left;
+      border: 1px solid rgba(248, 113, 113, 0.35);
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+    }
+    #appDialog.app-dialog--info .app-dialog-card {
+      border-color: rgba(148, 163, 184, 0.25);
+    }
+    #appDialogBody {
+      color: #e2e8f0;
+      line-height: 1.45;
+      font-size: 0.95rem;
+    }
   </style>
 </head>
 <body>
@@ -212,6 +232,14 @@
     </div>
   </div>
 
+  <div id="appDialog" class="state-overlay app-dialog--info" role="dialog" aria-modal="true" aria-labelledby="appDialogTitle">
+    <div class="state-card app-dialog-card" id="appDialogCard">
+      <h2 id="appDialogTitle" class="h6 mb-2" style="letter-spacing: 0.06em; color: #f1f5f9;">Notice</h2>
+      <p id="appDialogBody" class="mb-4"></p>
+      <button type="button" class="btn btn-submit text-white w-100" id="appDialogOk">OK</button>
+    </div>
+  </div>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
     import {
@@ -240,6 +268,40 @@
       "Hi ! welcome to the Temi Butler Service. Please choose the beverages and snacks you would like to order";
 
     const el = (id) => document.getElementById(id);
+
+    /**
+     * In-app modal instead of `window.alert` (matches the dark theme; no “site says” browser chrome).
+     */
+    function showAppDialog(message, opts = {}) {
+      const overlay = el("appDialog");
+      const titleEl = el("appDialogTitle");
+      const bodyEl = el("appDialogBody");
+      const okBtn = el("appDialogOk");
+      if (!overlay || !titleEl || !bodyEl || !okBtn) {
+        window.alert(message);
+        return;
+      }
+      const variant = opts.variant === "error" ? "error" : "info";
+      titleEl.textContent = opts.title || "Notice";
+      bodyEl.textContent = message || "";
+      overlay.classList.toggle("app-dialog--info", variant === "info");
+      overlay.classList.add("active");
+      try {
+        okBtn.focus();
+      } catch {
+        /* ignore */
+      }
+
+      const close = () => {
+        overlay.classList.remove("active");
+        overlay.onclick = null;
+        okBtn.onclick = null;
+      };
+      okBtn.onclick = () => close();
+      overlay.onclick = (ev) => {
+        if (ev.target === overlay) close();
+      };
+    }
 
     /**
      * Pick a natural US English voice (prefer Samantha / female-friendly).
@@ -777,7 +839,10 @@
         });
       } catch (e) {
         console.error(e);
-        alert("Could not cancel. Check Firebase rules.");
+        showAppDialog("Could not cancel. Check Firebase rules.", {
+          title: "Couldn't cancel",
+          variant: "error",
+        });
       }
     }
 
@@ -789,7 +854,10 @@
           if (!data || !data.items) return;
           const st = (data.status || "").toLowerCase();
           if (st !== "pending" && st !== "") {
-            alert("Only queued orders can be edited.");
+            showAppDialog("Only queued orders can be edited.", {
+              title: "Can't edit this order",
+              variant: "info",
+            });
             return;
           }
           Object.keys(cart).forEach((k) => delete cart[k]);
@@ -813,7 +881,10 @@
         })
         .catch((e) => {
           console.error(e);
-          alert("Could not load order for editing. Check connection/rules.");
+          showAppDialog("Could not load order for editing. Check connection/rules.", {
+            title: "Couldn't load order",
+            variant: "error",
+          });
         });
     }
 
@@ -1035,10 +1106,15 @@
             console.error("Could not refresh inventory", refreshErr);
           }
         }
-        alert(
+        const msg =
           e?.message ||
-            "Could not submit order. Check connection and Firebase rules."
-        );
+          "Could not submit order. Check connection and Firebase rules.";
+        showAppDialog(msg, {
+          title: isInventorySubmitConflict(e)
+            ? "Not enough stock"
+            : "Couldn't submit order",
+          variant: "error",
+        });
       }
     }
 
