@@ -388,6 +388,7 @@
 
     let welcomeSpoken = false;
     let voiceAttemptSeq = 0;
+    let introAutoRetriedAttemptId = 0;
 
     function startResumeHack(synth) {
       const end = Date.now() + 25000;
@@ -450,6 +451,25 @@
         if (code === "canceled" || code === "interrupted") return;
         showIntroTextBanner();
         debugVoice("utterance error", { code });
+
+        // Auto-retry once right after the first-tap attempt fails. On Android,
+        // the very first speak sometimes fails but a replay succeeds immediately after.
+        if (!forceReplay && introAutoRetriedAttemptId !== attemptId) {
+          introAutoRetriedAttemptId = attemptId;
+          setTimeout(() => {
+            // still latest attempt and still not started?
+            if (attemptId !== voiceAttemptSeq) return;
+            if (welcomeSpoken) return;
+            try {
+              if (window.speechSynthesis) window.speechSynthesis.cancel();
+            } catch {
+              /* ignore */
+            }
+            speakIntro(true);
+          }, 180);
+          return;
+        }
+
         setTimeout(() => {
           // Only show if this is still the latest attempt AND the intro never started.
           if (attemptId !== voiceAttemptSeq) return;
