@@ -229,7 +229,7 @@
   <div id="overlayTap" class="state-overlay active" style="z-index: 150;">
     <div class="state-card">
       <p class="mb-3"><strong>Tap anywhere</strong> to hear the welcome message. Audio cannot start automatically after you scan the QR code — this is a browser security rule, not a bug.</p>
-      <p class="tap-hint mb-0">No sound? Use 🔊 Play again below after you close this.</p>
+      <!-- <p class="tap-hint mb-0">No sound? Use 🔊 Play again below after you close this.</p> -->
     </div>
         </div>
 
@@ -327,6 +327,24 @@
       hint.classList.remove("d-none");
     }
 
+    const VOICE_DEBUG = new URLSearchParams(location.search).has("debugVoice");
+    function debugVoice(label, extra = {}) {
+      if (!VOICE_DEBUG) return;
+      try {
+        const synth = window.speechSynthesis;
+        console.debug("[voice]", label, {
+          hasSynth: !!synth,
+          speaking: !!synth?.speaking,
+          pending: !!synth?.pending,
+          paused: !!synth?.paused,
+          voices: synth?.getVoices ? synth.getVoices().length : 0,
+          ...extra,
+        });
+      } catch {
+        /* ignore */
+      }
+    }
+
     function pickVoice(voices) {
       if (!voices || !voices.length) return null;
       const norm = (s) => (s || "").toLowerCase();
@@ -395,12 +413,9 @@
 
       if (!forceReplay && welcomeSpoken) return;
 
-      // Keep it simple; do not cancel inside onerror.
-      try {
-        synth.cancel();
-      } catch {
-        /* ignore */
-      }
+      // IMPORTANT (Android Chrome/Brave): calling synth.cancel() right before speak()
+      // can kill the gesture-unlocked context and silently swallow TTS. We do NOT cancel here.
+      debugVoice("doSpeak called", { forceReplay, voiceOverride: !!voiceOverride });
 
       const u = new SpeechSynthesisUtterance(INTRO_TEXT);
       u.lang = "en-US";
@@ -418,11 +433,13 @@
         if (!forceReplay) welcomeSpoken = true;
         stopHack = startResumeHack(synth);
         setIntroVoiceHint("🔊 Playing… (turn up media volume)");
+        debugVoice("utterance start");
       };
 
       u.onend = () => {
         if (stopHack) stopHack();
         setIntroVoiceHint("");
+        debugVoice("utterance end");
       };
 
       u.onerror = (ev) => {
@@ -430,6 +447,7 @@
         const code = ev?.error || "";
         if (code === "canceled" || code === "interrupted") return;
         showIntroTextBanner();
+        debugVoice("utterance error", { code });
         setTimeout(() => {
           if (!synth.speaking && !synth.pending) {
             setIntroVoiceHint(
@@ -440,6 +458,7 @@
       };
 
       synth.speak(u);
+      debugVoice("synth.speak queued");
     }
 
     // One-time voiceschanged: prime voices early so the first tap can pick the preferred voice.
@@ -1264,7 +1283,16 @@
 
     const btnReplay = el("btnReplayIntro");
     if (btnReplay) {
-      btnReplay.addEventListener("click", () => speakIntro(true));
+      btnReplay.addEventListener("click", () => {
+        // For replay only: cancel is OK (new gesture). Add a tiny delay to avoid
+        // Android swallowing speak() immediately after cancel().
+        try {
+          if (window.speechSynthesis) window.speechSynthesis.cancel();
+        } catch {
+          /* ignore */
+        }
+        setTimeout(() => speakIntro(true), 100);
+      });
     }
 
     updateCartUi();
