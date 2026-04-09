@@ -827,6 +827,39 @@
       }
     }
 
+    /** Merge Firebase `inventory` snapshot into global `inventory` (same rules as `onValue`). */
+    function mergeRemoteInventory(val) {
+      if (!val || typeof val !== "object") return;
+      inventory = { ...DEFAULT_INVENTORY };
+      Object.keys(val).forEach((sku) => {
+        if (inventory[sku]) {
+          inventory[sku] = { ...inventory[sku], ...val[sku] };
+        } else {
+          inventory[sku] = { ...val[sku], category: val[sku].category || "snack" };
+        }
+      });
+    }
+
+    /** Drop cart lines above current stock (after a failed submit or forced refresh). */
+    function clampCartToStock() {
+      Object.keys(cart).forEach((sku) => {
+        const maxQ = Math.max(0, Number(inventory[sku]?.quantity) || 0);
+        const q = cart[sku] || 0;
+        if (q > maxQ) cart[sku] = maxQ;
+        if ((cart[sku] || 0) <= 0) delete cart[sku];
+      });
+    }
+
+    /** True when `applyInventoryDeltaOrThrow` aborted for insufficient stock (or missing inventory node). */
+    function isInventorySubmitConflict(err) {
+      const m = String(err?.message || "");
+      return (
+        /out of stock|need \d+ more/i.test(m) ||
+        m.includes("Inventory not available.") ||
+        m === "Could not update inventory."
+      );
+    }
+
     /** Positive counts only (SKU → qty to remove from stock). */
     function positiveItemCounts(items) {
       const out = {};
@@ -911,16 +944,18 @@
       try {
         if (editingOrderId) {
           const oid = editingOrderId;
-          const snap = await get(ref(db, "orders/" + oid));
-          const prev = snap.val() || {};
-          const oldItems = prev.items || {};
-          const hadDebit = !!prev.inventoryDebitedAt;
 
           let delta;
-          if (!hadDebit) {
-            delta = items;
-          } else {
-            delta = computeItemsDelta(oldItems, items);
+          {
+            const snap2 = await get(ref(db, "orders/" + oid));
+            const prev2 = snap2.val() || {};
+            const oldItems2 = prev2.items || {};
+            const hadDebit2 = !!prev2.inventoryDebitedAt;
+            if (!hadDebit2) {
+              delta = items;
+            } else {
+              delta = computeItemsDelta(oldItems2, items);
+            }
           }
 
           if (Object.keys(delta).length > 0) {
@@ -989,6 +1024,17 @@
         renderCatalog();
       } catch (e) {
         console.error(e);
+        if (db && isInventorySubmitConflict(e)) {
+          try {
+            const invSnap = await get(ref(db, "inventory"));
+            mergeRemoteInventory(invSnap.val());
+            clampCartToStock();
+            renderCatalog();
+            updateCartUi();
+          } catch (refreshErr) {
+            console.error("Could not refresh inventory", refreshErr);
+          }
+        }
         alert(
           e?.message ||
             "Could not submit order. Check connection and Firebase rules."
@@ -1016,14 +1062,7 @@
         (snap) => {
           const val = snap.val();
           if (val && typeof val === "object") {
-            inventory = { ...DEFAULT_INVENTORY };
-            Object.keys(val).forEach((sku) => {
-              if (inventory[sku]) {
-                inventory[sku] = { ...inventory[sku], ...val[sku] };
-              } else {
-                inventory[sku] = { ...val[sku], category: val[sku].category || "snack" };
-              }
-            });
+            mergeRemoteInventory(val);
           }
           renderCatalog();
           updateCartUi();

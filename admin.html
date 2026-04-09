@@ -630,6 +630,7 @@
           await update(ref(db, `orders/${id}`), {
             status: "accepted",
             acceptedAt: serverTimestamp(),
+            ...(o.inventoryDebitedAt ? {} : { inventoryDebitedAt: serverTimestamp() }),
           });
         } catch (err) {
           console.error(err);

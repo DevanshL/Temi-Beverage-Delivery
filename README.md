@@ -39,7 +39,7 @@ The Temi screen is a single full-screen page (no navigation UI) with:
   - shows current and past orders (items, quantities, status)
   - **Accept** marks accepted **without moving Temi** (inventory was already debited when the customer submitted):
     - `orders/{orderId}/status = "accepted"` and `acceptedAt`
-    - **Legacy** orders without `inventoryDebitedAt` still run a one-time full-line reserve (same atomic transaction as before) so older pending orders remain valid.
+    - **Legacy** orders without `inventoryDebitedAt` still run a one-time full-line reserve (same atomic transaction as before) so older pending orders remain valid; Accept then sets `inventoryDebitedAt` so a repeat Accept cannot reserve again.
   - **Start trip** starts movement (only when no order is `ongoing` and Temi isn’t busy):
     - `orders/{orderId}/status = "ongoing"`
     - sets `active_order_id = "{orderId}"` so Temi can mark it complete after guest OK
