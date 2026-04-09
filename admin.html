@@ -427,7 +427,17 @@
         });
       } catch (err) {
         console.error(err);
-        alert("Could not update quantity (check Firebase rules).");
+        const code = err?.code || "";
+        const msg = err?.message || String(err);
+        const isPerm =
+          code === "permission-denied" ||
+          /permission|PERMISSION_DENIED/i.test(msg);
+        alert(
+          isPerm
+            ? "Permission denied updating inventory. In Firebase Console → Realtime Database → Rules, allow writes to inventory for signed-in admins (and ensure you are logged in). Technical: " +
+                msg
+            : "Could not update quantity: " + msg
+        );
       } finally {
         targetBtn.disabled = false;
       }
