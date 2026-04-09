@@ -417,10 +417,15 @@
       };
     }
 
-    /** Picking a specific `voice` breaks silently on some Brave/Android engines; `lang` alone is safer. */
-    function preferSpeechLangOnly() {
+    /**
+     * We prefer picking a natural-sounding female English voice when the list is available.
+     * On some mobile browsers, the voice list loads async; we wait briefly before speaking so
+     * the first play matches the "Play again" experience.
+     */
+    function shouldWaitForVoicesFirst() {
       const ua = navigator.userAgent || "";
-      return /Android|iPhone|iPad|iPod|Brave/i.test(ua);
+      // Desktop usually loads fast; mobile often loads late.
+      return /Android|iPhone|iPad|iPod/i.test(ua);
     }
 
     function setIntroVoiceHint(text) {
@@ -446,6 +451,7 @@
         return;
       }
 
+      let waitedForVoicesOnce = false;
       const trySpeak = (plainLangOnly = false, ignoreDebounce = false) => {
         /* Auto path: speak at most once per page visit. Replay button bypasses this. */
         if (!forceReplay && welcomeAutoPlayed) {
@@ -467,8 +473,36 @@
           u.volume = 1;
           u.pitch = 1.08;
           const voiceList = synth.getVoices();
-          const langOnly = plainLangOnly || preferSpeechLangOnly();
-          const voice = !langOnly && voiceList.length ? pickEnglishVoice() : null;
+
+          // If the list is empty on first run, wait a moment so we can pick the preferred voice.
+          if (
+            !plainLangOnly &&
+            !forceReplay &&
+            !waitedForVoicesOnce &&
+            voiceList.length === 0 &&
+            shouldWaitForVoicesFirst()
+          ) {
+            waitedForVoicesOnce = true;
+            setIntroVoiceHint("Loading voice…");
+            // Retry when voices arrive, or after a short timeout.
+            synth.addEventListener(
+              "voiceschanged",
+              () => {
+                if (!welcomeAutoPlayed && !(synth.speaking || synth.pending)) {
+                  trySpeak(false, true);
+                }
+              },
+              { once: true }
+            );
+            setTimeout(() => {
+              if (!welcomeAutoPlayed && !(synth.speaking || synth.pending)) {
+                trySpeak(false, true);
+              }
+            }, 250);
+            return;
+          }
+
+          const voice = !plainLangOnly && voiceList.length ? pickEnglishVoice() : null;
           if (voice) u.voice = voice;
 
           const stopHack = createSpeechResumeHack(synth);
