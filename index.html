@@ -523,6 +523,8 @@
     const cart = {};
     /** @type {string | null} */
     let editingOrderId = null;
+    /** Line items from the order when Edit started — used so + caps include stock already reserved for this order. */
+    let editBaselineItems = null;
     let ordersUnsubscribe = null;
     /** Last snapshot of this user’s orders (so we can re-render right after entering edit mode). */
     let lastOrdersRows = [];
@@ -603,6 +605,16 @@
       box.classList.remove("d-none");
     }
 
+    /** Max quantity allowed in cart for this SKU (global stock + this order’s baseline while editing). */
+    function maxCartQtyForSku(sku) {
+      const globalQ = Math.max(0, Number(inventory[sku]?.quantity) || 0);
+      if (editingOrderId && editBaselineItems) {
+        const reserved = Math.max(0, Number(editBaselineItems[sku]) || 0);
+        return globalQ + reserved;
+      }
+      return globalQ;
+    }
+
     function renderCatalog() {
       const bev = el("rowBeverages");
       const snk = el("rowSnacks");
@@ -612,9 +624,16 @@
       Object.keys(inventory).forEach((sku) => {
         const item = inventory[sku];
         const row = item.category === "snack" ? snk : bev;
-        const maxQ = Math.max(0, Number(item.quantity) || 0);
+        const globalQ = Math.max(0, Number(item.quantity) || 0);
+        const maxQ = maxCartQtyForSku(sku);
         const qty = cart[sku] || 0;
         const out = maxQ === 0;
+
+        const stockLabel = out
+          ? '<span class="out-stock">Out of Stock</span>'
+          : editingOrderId && editBaselineItems
+            ? `<span title="Unallocated in pantry plus what this queued order already holds.">Up to ${maxQ} for this order${globalQ < maxQ ? ` <span class="text-muted">(${globalQ} free)</span>` : ""}</span>`
+            : `In stock: ${globalQ}`;
 
         const col = document.createElement("div");
         col.className = "col-6 col-md-4 col-lg-3";
@@ -626,7 +645,7 @@
           <div class="item-card">
             <div class="item-picture">${imgPart}</div>
             <div class="mt-2 fw-semibold text-center small">${item.name}</div>
-            <div class="stock-badge text-center">${out ? '<span class="out-stock">Out of Stock</span>' : `In stock: ${maxQ}`}</div>
+            <div class="stock-badge text-center">${stockLabel}</div>
             <div class="d-flex align-items-center justify-content-center gap-2 mt-2">
               <button type="button" class="qty-btn qty-minus" data-sku="${sku}" ${qty <= 0 ? "disabled" : ""}>−</button>
               <span class="fw-bold" style="min-width:2rem; text-align:center" id="qty-${sku}">${qty}</span>
@@ -651,7 +670,7 @@
     }
 
     function adjustCart(sku, delta) {
-      const maxQ = Math.max(0, Number(inventory[sku]?.quantity) || 0);
+      const maxQ = maxCartQtyForSku(sku);
       if (maxQ === 0) return;
       const next = Math.max(0, Math.min(maxQ, (cart[sku] || 0) + delta));
       if (next === 0) delete cart[sku];
@@ -865,6 +884,11 @@
             cart[k] = data.items[k];
           });
           editingOrderId = orderId;
+          editBaselineItems = {};
+          Object.keys(data.items || {}).forEach((k) => {
+            const n = Number(data.items[k]) || 0;
+            if (n > 0) editBaselineItems[k] = n;
+          });
           const b = el("editOrderBanner");
           const btxt = el("editOrderBannerText");
           if (b && btxt) {
@@ -890,6 +914,7 @@
 
     function endEditOrder() {
       editingOrderId = null;
+      editBaselineItems = null;
       const b = el("editOrderBanner");
       if (b) b.classList.add("d-none");
       updateCartUi();
