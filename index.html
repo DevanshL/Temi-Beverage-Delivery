@@ -883,6 +883,11 @@
     }
 
     if (db) {
+      // Show embedded catalog immediately; Firebase may take 200ms–2s on first load.
+      inventory = { ...DEFAULT_INVENTORY };
+      renderCatalog();
+      updateCartUi();
+
       onValue(
         ref(db, "inventory"),
         (snap) => {

@@ -3,7 +3,7 @@
     <string name="status_idle_home">At charging — idle</string>
     <string name="subtitle_idle">Temi Butler — ready for orders</string>
     <string name="status_arrived_pantry">Arrived at pantry — load items</string>
-    <string name="subtitle_waiting_pantry">Waiting for staff to load tray…</string>
+    <string name="subtitle_waiting_pantry">Waiting for staff to load tray</string>
     <string name="status_arrived_gaming">Arrived at gaming zone</string>
     <string name="subtitle_collect">Collect your order, then tap OK</string>
     <string name="btn_ok_collect">OK — I collected my order</string>
