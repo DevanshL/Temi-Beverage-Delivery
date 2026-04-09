@@ -936,10 +936,13 @@
       });
     }
 
-    /** Drop cart lines above current stock (after a failed submit or forced refresh). */
+    /**
+     * Drop cart quantities above what’s allowed now (uses same cap as +/−: `maxCartQtyForSku`).
+     * Call after inventory updates so lines don’t stay “stuck” when pantry hits 0 or another user takes stock.
+     */
     function clampCartToStock() {
-      Object.keys(cart).forEach((sku) => {
-        const maxQ = Math.max(0, Number(inventory[sku]?.quantity) || 0);
+      Object.keys({ ...cart }).forEach((sku) => {
+        const maxQ = maxCartQtyForSku(sku);
         const q = cart[sku] || 0;
         if (q > maxQ) cart[sku] = maxQ;
         if ((cart[sku] || 0) <= 0) delete cart[sku];
@@ -1165,6 +1168,7 @@
           if (val && typeof val === "object") {
             mergeRemoteInventory(val);
           }
+          clampCartToStock();
           renderCatalog();
           updateCartUi();
         },
