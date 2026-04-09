@@ -1200,15 +1200,16 @@
         /* ignore */
       }
       startOrdersListener(db);
-      if (loadOrderQueue().length > 0) {
-        overlayTap.classList.remove("active");
-        /* Without a tap, some browsers block speech; intro banner + Play still work. */
-        speakIntro(false);
-      }
+      /* Do NOT auto-hide the tap overlay when the user has queued orders in localStorage.
+       * That dismissed the sheet without a real gesture — Brave/Safari then block speech, so
+       * the overlay vanished and no voice played. One tap is always required to unlock voice. */
     }
 
-    // Voice + tap overlay
+    // Voice + tap overlay (must run in a real user gesture — do not auto-dismiss)
+    let voiceTapDismissed = false;
     function dismissTapOverlay() {
+      if (voiceTapDismissed) return;
+      voiceTapDismissed = true;
       overlayTap.classList.remove("active");
       /* Safari often returns an empty voice list until getVoices() runs in the same user gesture. */
       try {
@@ -1221,7 +1222,10 @@
       }
       speakIntro(false);
       overlayTap.removeEventListener("click", dismissTapOverlay);
+      overlayTap.removeEventListener("pointerdown", dismissTapOverlay);
     }
+    /* pointerdown + click: mobile (Brave/Android) often delivers touch more reliably than delayed click */
+    overlayTap.addEventListener("pointerdown", dismissTapOverlay);
     overlayTap.addEventListener("click", dismissTapOverlay);
 
     const btnReplay = el("btnReplayIntro");
