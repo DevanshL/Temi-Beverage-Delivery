@@ -224,11 +224,11 @@
 
   <!-- Waiting overlay removed: we keep browsing like a food app; status is shown in the footer. -->
 
-  <!-- Tap to enable voice (browser policy) -->
+  <!-- Tap to enable voice: browsers block speech until there is a user gesture (no autoplay on load). -->
   <div id="overlayTap" class="state-overlay active" style="z-index: 150;">
     <div class="state-card">
-      <p class="mb-3">Tap anywhere to start and hear the welcome message.</p>
-      <p class="tap-hint mb-0">Required on some browsers for voice.</p>
+      <p class="mb-3"><strong>Tap anywhere</strong> to hear the welcome message. Audio cannot start automatically after you scan the QR code — this is a browser security rule, not a bug.</p>
+      <p class="tap-hint mb-0">No sound? Use 🔊 Play again below after you close this.</p>
     </div>
   </div>
 
@@ -398,9 +398,6 @@
       }
 
       const trySpeak = () => {
-        if (!synth.getVoices().length) {
-          return;
-        }
         /* Auto path: speak at most once per page visit. Replay button bypasses this. */
         if (!forceReplay && welcomeAutoPlayed) {
           return;
@@ -420,7 +417,10 @@
           u.rate = 0.95;
           u.volume = 1;
           u.pitch = 1.08;
-          const voice = pickEnglishVoice();
+          /* Do not wait for getVoices() — on Safari/iOS voices load async and an early return
+           * meant nothing ever spoke; default engine still works with u.lang. */
+          const voiceList = synth.getVoices();
+          const voice = voiceList.length ? pickEnglishVoice() : null;
           if (voice) u.voice = voice;
           u.onerror = () => {
             showIntroTextBanner();
@@ -437,12 +437,10 @@
 
       showIntroTextBanner();
 
+      trySpeak();
+      /* When voices load later, speak once more with a chosen voice (guarded by welcomeAutoPlayed). */
       if (synth.getVoices().length === 0) {
         synth.addEventListener("voiceschanged", () => trySpeak(), { once: true });
-        setTimeout(() => trySpeak(), 100);
-        setTimeout(() => trySpeak(), 800);
-      } else {
-        trySpeak();
       }
     }
 
@@ -1204,12 +1202,23 @@
       startOrdersListener(db);
       if (loadOrderQueue().length > 0) {
         overlayTap.classList.remove("active");
+        /* Without a tap, some browsers block speech; intro banner + Play still work. */
+        speakIntro(false);
       }
     }
 
     // Voice + tap overlay
     function dismissTapOverlay() {
       overlayTap.classList.remove("active");
+      /* Safari often returns an empty voice list until getVoices() runs in the same user gesture. */
+      try {
+        if (window.speechSynthesis) {
+          window.speechSynthesis.getVoices();
+          window.speechSynthesis.getVoices();
+        }
+      } catch {
+        /* ignore */
+      }
       speakIntro(false);
       overlayTap.removeEventListener("click", dismissTapOverlay);
     }
