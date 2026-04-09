@@ -478,8 +478,13 @@
             setIntroVoiceHint("🔊 Playing welcome… (turn media volume up)");
           };
           u.onerror = (ev) => {
-            console.warn("speechSynthesis utterance error", ev);
             stopHack();
+            /* Second trySpeak() calls synth.cancel() — the replaced utterance errors with "canceled"; not a user-facing failure. */
+            const code = ev.error || "";
+            if (code === "canceled" || code === "interrupted") {
+              return;
+            }
+            console.warn("speechSynthesis utterance error", ev);
             if (!plainLangOnly && voiceList.length) {
               welcomeAutoPlayed = false;
               trySpeak(true, true);
@@ -509,12 +514,14 @@
       setIntroVoiceHint("");
 
       trySpeak(false);
-      /* When voices load later, retry once if nothing started yet (avoids double-queue). */
+      /* When voices load async, wait for list — but do NOT call trySpeak if an utterance is already queued (avoids cancel + false "could not play"). */
       if (synth.getVoices().length === 0) {
         synth.addEventListener(
           "voiceschanged",
           () => {
-            if (!welcomeAutoPlayed) trySpeak(false);
+            if (welcomeAutoPlayed) return;
+            if (synth.speaking || synth.pending) return;
+            trySpeak(false);
           },
           { once: true }
         );
