@@ -597,7 +597,8 @@
       },
     };
 
-    let inventory = { ...DEFAULT_INVENTORY };
+    /** Filled from Firebase; empty until first snapshot (or fallback if Firebase unavailable). */
+    let inventory = {};
     const cart = {};
     /** @type {string | null} */
     let editingOrderId = null;
@@ -1001,16 +1002,32 @@
       }
     }
 
-    /** Merge Firebase `inventory` snapshot into global `inventory` (same rules as `onValue`). */
+    /**
+     * Merge Firebase `inventory` snapshot into global `inventory`.
+     * Firebase is the source of truth: removed SKUs disappear; new SKUs appear.
+     * `DEFAULT_INVENTORY` only fills in missing fields for known seed SKUs or minimal defaults for new SKUs.
+     */
     function mergeRemoteInventory(val) {
-      if (!val || typeof val !== "object") return;
-      inventory = { ...DEFAULT_INVENTORY };
-      Object.keys(val).forEach((sku) => {
-        if (inventory[sku]) {
-          inventory[sku] = { ...inventory[sku], ...val[sku] };
-        } else {
-          inventory[sku] = { ...val[sku], category: val[sku].category || "snack" };
-        }
+      if (!val || typeof val !== "object") {
+        inventory = {};
+        return;
+      }
+      const skus = Object.keys(val);
+      if (skus.length === 0) {
+        inventory = {};
+        return;
+      }
+      inventory = {};
+      skus.forEach((sku) => {
+        const base =
+          DEFAULT_INVENTORY[sku] || {
+            name: sku,
+            emoji: "📦",
+            imageUrl: "",
+            category: "snack",
+            quantity: 0,
+          };
+        inventory[sku] = { ...base, ...val[sku] };
       });
     }
 
@@ -1234,18 +1251,17 @@
     }
 
     if (db) {
-      // Show embedded catalog immediately; Firebase may take 200ms–2s on first load.
-      inventory = { ...DEFAULT_INVENTORY };
-      renderCatalog();
+      // Avoid flashing DEFAULT_INVENTORY items that Firebase may have removed (~200ms+ until snapshot).
+      inventory = {};
+      el("rowBeverages").innerHTML =
+        '<div class="col-12 text-secondary small">Loading…</div>';
+      el("rowSnacks").innerHTML = "";
       updateCartUi();
 
       onValue(
         ref(db, "inventory"),
         (snap) => {
-          const val = snap.val();
-          if (val && typeof val === "object") {
-            mergeRemoteInventory(val);
-          }
+          mergeRemoteInventory(snap.val());
           clampCartToStock();
           renderCatalog();
           updateCartUi();
@@ -1258,6 +1274,7 @@
         }
       );
     } else {
+      inventory = { ...DEFAULT_INVENTORY };
       renderCatalog();
       updateCartUi();
     }
