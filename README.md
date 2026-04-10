@@ -40,12 +40,14 @@ The Temi screen is a single full-screen page (no navigation UI) with:
   - **Accept** marks accepted **without moving Temi** (inventory was already debited when the customer submitted):
     - `orders/{orderId}/status = "accepted"` and `acceptedAt`
     - **Legacy** orders without `inventoryDebitedAt` still run a one-time full-line reserve (same atomic transaction as before) so older pending orders remain valid; Accept then sets `inventoryDebitedAt` so a repeat Accept cannot reserve again.
-  - **Start trip** starts movement (only when no order is `ongoing` and Temi isn’t busy):
-    - `orders/{orderId}/status = "ongoing"`
-    - sets `active_order_id = "{orderId}"` so Temi can mark it complete after guest OK
-    - sets `location = "pantry"` to start pickup leg
-  - When Temi arrives pantry (`robot_state = "arrived_pantry"`), the `ongoing` order shows **Accept** / **Decline** (decline disabled). Pressing **Accept** sends Temi pantry → gaming:
-    - sets `location = "gaming"` (Temi moves Pantry → Gaming)
+  - **Start trip** promotes the order to `ongoing`, sets `active_order_id`, and starts the pickup leg **only if Temi is not already waiting at pantry**:
+    - `orders/{orderId}/status = "ongoing"`, `startedAt`
+    - `active_order_id = "{orderId}"` (Temi Android uses this when the guest taps OK at gaming)
+    - If Temi is **not** at pantry: `location = "pantry"` and a status hint such as `admin_sent_to_pantry`
+    - If Temi is **already** at pantry (`robot_state = "arrived_pantry"`): does **not** re-send `location = "pantry"` (avoids re-triggering navigation); sets a status hint such as `admin_started_at_pantry` instead
+    - **Exception:** while another order is `ongoing`, **Start trip** stays disabled. If Temi looks “busy” because it is moving, **Start trip** is blocked unless Temi is already at pantry (then you can start the next accepted order from there).
+  - When Temi arrives pantry (`robot_state = "arrived_pantry"`), an **`ongoing`** order shows a second **Accept** that **dispatches** pantry → gaming (`location = "gaming"`, status hint e.g. `admin_dispatched_to_gaming`). **Decline** stays disabled.
+  - If Temi is already at pantry and an order is still **`accepted`** (not yet `ongoing`), a one-click **Accept** can promote to `ongoing`, set `active_order_id`, and send **`location = "gaming"`** in one step (same dispatch as above).
   - **Decline** button is present but disabled (per PSB)
 - **Notification**:
   - driven by `admin/notification_pending`; pressing OK opens Orders and clears the flag.
@@ -75,10 +77,10 @@ The Temi screen is a single full-screen page (no navigation UI) with:
 
 1. **Customer submits order** (`index.html`) → stock is decremented atomically, then creates `orders/{orderId}` with `status="pending"` and `inventoryDebitedAt`, and sets `admin/notification_pending=true`.
 2. **Admin accepts** (`admin.html`) → sets `orders/{orderId}/status="accepted"` (**no movement yet**; no second inventory decrement for orders that already have `inventoryDebitedAt`).
-3. **Admin starts trip** → marks this as the active order and starts the pickup leg:
+3. **Admin starts trip** → promotes the order and starts the pickup leg (see Admin web app above for the “already at pantry” case where `location` is not set to `pantry` again):
    - `orders/{orderId}/status="ongoing"`
    - `active_order_id = "{orderId}"`
-   - `location="pantry"` (Temi moves home base → pantry)
+   - Usually `location="pantry"` (Temi moves toward pantry from wherever it is)
 4. **Temi arrives at Pantry** (Android) →
    - `status="arrived_pantry"` + `robot_state="arrived_pantry"`
    - `location="none"` (so it doesn’t re-trigger navigation)
@@ -136,7 +138,7 @@ root/
 | Piece | Role |
 |--------|------|
 | `MainActivity` | Firebase listeners, Temi listeners, navigation, TTS, OK button |
-| Firebase Realtime Database | `location`, `status`, `orders` |
+| Firebase Realtime Database | `location`, `status`, `robot_state`, `active_order_id`, `orders`, `inventory`, `admin/…` (see tree above) |
 | Temi `Robot` API | `goTo`, `stopMovement`, `tiltAngle`, `speak(TtsRequest)`, kiosk, listeners |
 
 ## Navigation behavior (summary)
@@ -169,7 +171,7 @@ app/
 ## Build and run
 
 - **JDK:** 11 · **SDK:** `compileSdk` / `targetSdk` 34, `minSdk` 24.
-- **Firebase:** Realtime Database enabled; rules must allow the app to read/write `location`, `status`, and `orders` as needed.
+- **Firebase:** Realtime Database enabled; security rules must allow the Android app and web clients to read/write the paths they use (`location`, `status`, `robot_state`, `active_order_id`, `orders`, `inventory`, `admin/…`, etc.).
 - **Device:** Deploy to a **Temi** for full behavior.
 
 ## Tests

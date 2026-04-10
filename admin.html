@@ -65,7 +65,26 @@
     }
     .order-card.active { border-color: rgba(56, 189, 248, 0.45); }
     .order-actions .btn { min-width: 96px; }
-    .inv-actions .btn { min-width: 56px; }
+    .inv-actions .btn { min-width: 44px; }
+    .inv-form-control,
+    .inv-form-control:focus {
+      background: rgba(15, 23, 42, 0.65);
+      color: #e2e8f0;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+    }
+    .inv-form-control::placeholder { color: rgba(148, 163, 184, 0.55); }
+    .inv-add-panel {
+      background: rgba(15, 23, 42, 0.35);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .inv-edit-panel {
+      background: rgba(15, 23, 42, 0.45);
+      border-radius: 10px;
+      padding: 12px 14px;
+      border: 1px solid rgba(56, 189, 248, 0.22);
+    }
   </style>
 </head>
 <body>
@@ -152,16 +171,54 @@
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
           <div>
             <h2 class="h5 mb-1">Inventory</h2>
-            <div class="muted small">Use − / + to adjust stock. Stock automatically shows “Out of Stock” at 0.</div>
+            <div class="muted small">Add items, edit details, or use − / + for stock. “Out of Stock” at 0.</div>
           </div>
         </div>
+
+        <div class="inv-add-panel mb-3">
+          <div class="fw-semibold small mb-2">Add item</div>
+          <div class="row g-2 g-md-3 align-items-end">
+            <div class="col-6 col-lg-2">
+              <label class="form-label muted small mb-1" for="addSku">SKU <span class="text-danger">*</span></label>
+              <input id="addSku" type="text" class="form-control form-control-sm inv-form-control" maxlength="64" autocomplete="off" placeholder="e.g. orange-juice" />
+            </div>
+            <div class="col-6 col-lg-2">
+              <label class="form-label muted small mb-1" for="addName">Name <span class="text-danger">*</span></label>
+              <input id="addName" type="text" class="form-control form-control-sm inv-form-control" maxlength="120" placeholder="Display name" />
+            </div>
+            <div class="col-4 col-lg-1">
+              <label class="form-label muted small mb-1" for="addEmoji">Emoji</label>
+              <input id="addEmoji" type="text" class="form-control form-control-sm inv-form-control" maxlength="16" placeholder="🍊" />
+            </div>
+            <div class="col-8 col-lg-2">
+              <label class="form-label muted small mb-1" for="addCategory">Category <span class="text-danger">*</span></label>
+              <select id="addCategory" class="form-select form-select-sm inv-form-control">
+                <option value="beverage">beverage</option>
+                <option value="snack">snack</option>
+              </select>
+            </div>
+            <div class="col-4 col-lg-1">
+              <label class="form-label muted small mb-1" for="addQty">Qty</label>
+              <input id="addQty" type="number" class="form-control form-control-sm inv-form-control" min="0" max="99999" value="10" />
+            </div>
+            <div class="col-12 col-lg-3">
+              <label class="form-label muted small mb-1" for="addImageUrl">Image URL (optional)</label>
+              <input id="addImageUrl" type="text" class="form-control form-control-sm inv-form-control" maxlength="2000" placeholder="https://…/image.png" />
+            </div>
+            <div class="col-12 col-lg-1">
+              <button type="button" class="btn btn-accent text-white w-100" id="btnAddInventory">Add</button>
+            </div>
+          </div>
+          <p class="muted small mb-0 mt-2">SKU is the database key (lowercase letters, numbers, underscore, hyphen). It cannot be changed later.</p>
+        </div>
+
         <div class="table-responsive">
           <table class="table table-sm align-middle mb-0">
             <thead>
               <tr>
-                <th style="width: 46%;">Product</th>
-                <th style="width: 20%;">Quantity</th>
-                <th style="width: 34%;">Action</th>
+                <th style="width: 40%;">Product</th>
+                <th style="width: 14%;">Quantity</th>
+                <th style="width: 46%;">Actions</th>
               </tr>
             </thead>
             <tbody id="invBody"></tbody>
@@ -174,7 +231,7 @@
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
           <div>
             <h2 class="h5 mb-1">Orders</h2>
-            <div class="muted small">Accept starts the next trip. Decline is disabled for now.</div>
+            <div class="muted small">Accept acknowledges a pending order (no movement). Start trip begins pickup; at pantry, Accept sends Temi to gaming. Decline is disabled for now.</div>
           </div>
           <div class="pill">
             <span class="muted">Notification:</span>
@@ -224,6 +281,7 @@
       get,
       set,
       update,
+      remove,
       runTransaction,
       serverTimestamp,
     } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
@@ -237,6 +295,44 @@
     };
 
     const el = (id) => document.getElementById(id);
+
+    /** @param {unknown} s */
+    function escapeHtml(s) {
+      const d = document.createElement("div");
+      d.textContent = s == null ? "" : String(s);
+      return d.innerHTML;
+    }
+
+    /** Safe for double-quoted HTML attributes */
+    /** @param {unknown} s */
+    function escapeHtmlAttr(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;")
+        .replace(/</g, "&lt;");
+    }
+
+    /** RTDB key: unambiguous path segment */
+    function normalizeSkuInput(raw) {
+      return String(raw || "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, "_");
+    }
+
+    function isValidSku(sku) {
+      return /^[a-z0-9_-]{1,64}$/.test(sku);
+    }
+
+    /** Same fallback as `index.html` when emoji is missing (and no image in catalog picture slot). */
+    const DEFAULT_INVENTORY_EMOJI = "📦";
+
+    function displayEmojiForItem(it) {
+      const e = it?.emoji;
+      return e != null && String(e).trim() !== "" ? String(e) : DEFAULT_INVENTORY_EMOJI;
+    }
+
     const showErr = (msg) => {
       const box = el("firebaseError");
       box.textContent = msg;
@@ -376,10 +472,20 @@
 
     // Inventory table
     let inventory = {};
-    onValue(ref(db, "inventory"), (snap) => {
-      inventory = snap.val() || {};
-      renderInventory();
-    }, (err) => showErr("Could not read inventory. Check rules."));
+    /** @type {string | null} */
+    let editingSku = null;
+
+    onValue(
+      ref(db, "inventory"),
+      (snap) => {
+        inventory = snap.val() || {};
+        if (editingSku && !Object.prototype.hasOwnProperty.call(inventory, editingSku)) {
+          editingSku = null;
+        }
+        renderInventory();
+      },
+      (err) => showErr("Could not read inventory. Check rules.")
+    );
 
     function renderInventory() {
       const body = el("invBody");
@@ -391,33 +497,233 @@
       keys.forEach((sku) => {
         const it = inventory[sku] || {};
         const qty = Number(it.quantity) || 0;
+        const em = displayEmojiForItem(it);
+        const title = `${em} ${it.name || sku}`;
+
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>
-            <div class="fw-semibold">${it.emoji ? it.emoji + " " : ""}${it.name || sku}</div>
-            <div class="muted small">${sku}</div>
+            <div class="fw-semibold">${escapeHtml(title)}</div>
+            <div class="muted small">${escapeHtml(sku)}</div>
           </td>
           <td class="qty">
-            ${qty === 0 ? `<span class="out">Out of Stock</span>` : qty}
+            ${qty === 0 ? `<span class="out">Out of Stock</span>` : escapeHtml(String(qty))}
           </td>
           <td>
-            <div class="inv-actions d-flex gap-2">
-              <button class="btn btn-sm btn-outline-light btn-sub" data-sku="${sku}" ${qty === 0 ? "disabled" : ""} title="Decrease by 1">−</button>
-              <button class="btn btn-sm btn-accent text-white btn-add" data-sku="${sku}" title="Increase by 1">+</button>
+            <div class="inv-actions d-flex flex-wrap gap-2 align-items-center">
+              <button type="button" class="btn btn-sm btn-outline-light btn-sub" data-sku="${escapeHtmlAttr(sku)}" ${qty === 0 ? "disabled" : ""} title="Decrease by 1">−</button>
+              <button type="button" class="btn btn-sm btn-accent text-white btn-add" data-sku="${escapeHtmlAttr(sku)}" title="Increase by 1">+</button>
+              <button type="button" class="btn btn-sm btn-outline-info btn-inv-edit" data-sku="${escapeHtmlAttr(sku)}" title="Edit name, emoji, category, image">✏️</button>
+              <button type="button" class="btn btn-sm btn-outline-danger btn-inv-delete" data-sku="${escapeHtmlAttr(sku)}" title="Remove item">🗑</button>
             </div>
           </td>
         `;
         body.appendChild(tr);
+
+        if (editingSku === sku) {
+          const name0 = escapeHtmlAttr(it.name || "");
+          const emoji0 = escapeHtmlAttr(it.emoji || "");
+          const cat0 = it.category === "snack" ? "snack" : "beverage";
+          const img0 = escapeHtmlAttr(
+            typeof it.imageUrl === "string" ? it.imageUrl : ""
+          );
+          const trEdit = document.createElement("tr");
+          trEdit.dataset.invEdit = sku;
+          trEdit.innerHTML = `
+            <td colspan="3" class="p-0 border-0">
+              <div class="inv-edit-panel m-2 ms-0 me-0">
+                <div class="small fw-semibold mb-2">Edit item <span class="muted">(${escapeHtml(sku)})</span></div>
+                <div class="row g-2 align-items-end">
+                  <div class="col-12 col-md-4">
+                    <label class="form-label muted small mb-1">Name</label>
+                    <input type="text" class="form-control form-control-sm inv-form-control inv-in-name" maxlength="120" value="${name0}" />
+                  </div>
+                  <div class="col-6 col-md-2">
+                    <label class="form-label muted small mb-1">Emoji</label>
+                    <input type="text" class="form-control form-control-sm inv-form-control inv-in-emoji" maxlength="16" value="${emoji0}" placeholder="📦 if empty" />
+                    <div class="muted small mt-1" style="font-size: 0.65rem;">Leave blank to use 📦 on the list & customer (when no image).</div>
+                  </div>
+                  <div class="col-6 col-md-2">
+                    <label class="form-label muted small mb-1">Category</label>
+                    <select class="form-select form-select-sm inv-form-control inv-in-category">
+                      <option value="beverage" ${cat0 === "beverage" ? "selected" : ""}>beverage</option>
+                      <option value="snack" ${cat0 === "snack" ? "selected" : ""}>snack</option>
+                    </select>
+                  </div>
+                  <div class="col-12 col-md-4">
+                    <label class="form-label muted small mb-1">Image URL (optional)</label>
+                    <input type="text" class="form-control form-control-sm inv-form-control inv-in-imageurl" maxlength="2000" value="${img0}" placeholder="https://…" />
+                  </div>
+                  <div class="col-12 d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-sm btn-accent text-white btn-inv-save-edit" data-sku="${escapeHtmlAttr(sku)}">Save</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary btn-inv-cancel-edit">Cancel</button>
+                  </div>
+                </div>
+              </div>
+            </td>
+          `;
+          body.appendChild(trEdit);
+        }
       });
     }
 
+    function inventoryPermAlert(err, actionLabel) {
+      console.error(err);
+      const code = err?.code || "";
+      const msg = err?.message || String(err);
+      const isPerm =
+        code === "permission-denied" ||
+        /permission|PERMISSION_DENIED/i.test(msg);
+      alert(
+        isPerm
+          ? `Permission denied (${actionLabel}). In Firebase Console → Realtime Database → Rules, allow writes to inventory for signed-in admins. Technical: ${msg}`
+          : `${actionLabel} failed: ${msg}`
+      );
+    }
+
+    el("btnAddInventory").addEventListener("click", async () => {
+      const skuRaw = normalizeSkuInput(el("addSku").value);
+      const name = (el("addName").value || "").trim();
+      const emoji = (el("addEmoji").value || "").trim();
+      const category = el("addCategory").value;
+      const qtyRaw = el("addQty").value;
+      const imageUrl = (el("addImageUrl").value || "").trim();
+
+      if (!isValidSku(skuRaw)) {
+        alert(
+          "SKU is required and must use only lowercase letters, numbers, underscores, and hyphens (e.g. orange_juice)."
+        );
+        return;
+      }
+      if (!name) {
+        alert("Name is required.");
+        return;
+      }
+      if (category !== "beverage" && category !== "snack") {
+        alert("Category must be beverage or snack.");
+        return;
+      }
+      const qty = Math.max(0, Math.min(99999, Math.floor(Number(qtyRaw) || 0)));
+
+      const btn = el("btnAddInventory");
+      btn.disabled = true;
+      try {
+        const snapNew = await get(ref(db, `inventory/${skuRaw}`));
+        if (snapNew.val() != null) {
+          alert(`SKU "${skuRaw}" already exists. Choose a different SKU.`);
+          return;
+        }
+
+        /** @type {Record<string, unknown>} */
+        const payload = {
+          name,
+          emoji,
+          category,
+          quantity: qty,
+          customizable: false,
+        };
+        if (imageUrl) payload.imageUrl = imageUrl;
+        else payload.imageUrl = "";
+
+        await set(ref(db, `inventory/${skuRaw}`), payload);
+        el("addSku").value = "";
+        el("addName").value = "";
+        el("addEmoji").value = "";
+        el("addCategory").value = "beverage";
+        el("addQty").value = "10";
+        el("addImageUrl").value = "";
+      } catch (err) {
+        inventoryPermAlert(err, "Add item");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
     el("invBody").addEventListener("click", async (e) => {
-      const t = e.target;
+      const t = /** @type {HTMLElement} */ (e.target);
+      if (!t) return;
+
+      const del = t.closest && t.closest(".btn-inv-delete");
+      if (del && del.dataset.sku) {
+        const sku = del.dataset.sku;
+        const it = inventory[sku] || {};
+        const label = it.name || sku;
+        if (
+          !confirm(
+            `Remove "${label}" (${sku}) from inventory?\n\nThis cannot be undone. Existing orders that reference this SKU may still show the old code until cleared.`
+          )
+        ) {
+          return;
+        }
+        del.disabled = true;
+        try {
+          await remove(ref(db, `inventory/${sku}`));
+          if (editingSku === sku) editingSku = null;
+        } catch (err) {
+          inventoryPermAlert(err, "Delete item");
+        } finally {
+          del.disabled = false;
+        }
+        return;
+      }
+
+      const editBtn = t.closest && t.closest(".btn-inv-edit");
+      if (editBtn && editBtn.dataset.sku) {
+        editingSku = editBtn.dataset.sku;
+        renderInventory();
+        return;
+      }
+
+      const cancelBtn = t.closest && t.closest(".btn-inv-cancel-edit");
+      if (cancelBtn) {
+        editingSku = null;
+        renderInventory();
+        return;
+      }
+
+      const saveBtn = t.closest && t.closest(".btn-inv-save-edit");
+      if (saveBtn && saveBtn.dataset.sku) {
+        const sku = saveBtn.dataset.sku;
+        const row = t.closest && t.closest("tr[data-inv-edit]");
+        if (!row) return;
+        const name = row.querySelector(".inv-in-name")?.value?.trim() ?? "";
+        const emoji = row.querySelector(".inv-in-emoji")?.value?.trim() ?? "";
+        const category = row.querySelector(".inv-in-category")?.value ?? "beverage";
+        const imageUrl = row.querySelector(".inv-in-imageurl")?.value?.trim() ?? "";
+
+        if (!name) {
+          alert("Name is required.");
+          return;
+        }
+        if (category !== "beverage" && category !== "snack") {
+          alert("Invalid category.");
+          return;
+        }
+
+        saveBtn.disabled = true;
+        try {
+          await update(ref(db, `inventory/${sku}`), {
+            name,
+            emoji,
+            category,
+            imageUrl: imageUrl || "",
+          });
+          editingSku = null;
+          renderInventory();
+        } catch (err) {
+          inventoryPermAlert(err, "Save item");
+        } finally {
+          saveBtn.disabled = false;
+        }
+        return;
+      }
+
       const btn = t.closest && t.closest(".btn-add");
       const sub = t.closest && t.closest(".btn-sub");
       const targetBtn = btn || sub;
       if (!targetBtn) return;
       const sku = targetBtn.dataset.sku;
+      if (!sku) return;
       const delta = btn ? 1 : -1;
       targetBtn.disabled = true;
       try {
@@ -426,18 +732,7 @@
           return Math.max(0, q + delta);
         });
       } catch (err) {
-        console.error(err);
-        const code = err?.code || "";
-        const msg = err?.message || String(err);
-        const isPerm =
-          code === "permission-denied" ||
-          /permission|PERMISSION_DENIED/i.test(msg);
-        alert(
-          isPerm
-            ? "Permission denied updating inventory. In Firebase Console → Realtime Database → Rules, allow writes to inventory for signed-in admins (and ensure you are logged in). Technical: " +
-                msg
-            : "Could not update quantity: " + msg
-        );
+        inventoryPermAlert(err, "Update quantity");
       } finally {
         targetBtn.disabled = false;
       }
