@@ -408,15 +408,9 @@
 
     function doSpeak(forceReplay, voiceOverride) {
       const synth = window.speechSynthesis;
-      if (!synth) {
-        showIntroTextBanner();
-        return;
-      }
-
+      if (!synth) { showIntroTextBanner(); return; }
       if (!forceReplay && welcomeSpoken) return;
 
-      // IMPORTANT (Android Chrome/Brave): calling synth.cancel() right before speak()
-      // can kill the gesture-unlocked context and silently swallow TTS. We do NOT cancel here.
       debugVoice("doSpeak called", { forceReplay, voiceOverride: !!voiceOverride });
 
       const u = new SpeechSynthesisUtterance(INTRO_TEXT);
@@ -429,12 +423,13 @@
       const picked = voiceOverride || (voices.length ? pickVoice(voices) : null);
       if (picked) u.voice = picked;
 
+      const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent);
       let stopHack = null;
       const attemptId = ++voiceAttemptSeq;
 
       u.onstart = () => {
         if (!forceReplay) welcomeSpoken = true;
-        stopHack = startResumeHack(synth);
+        if (!isIOS) stopHack = startResumeHack(synth);
         setIntroVoiceHint("");
         debugVoice("utterance start");
       };
@@ -452,34 +447,21 @@
         showIntroTextBanner();
         debugVoice("utterance error", { code });
 
-        // Auto-retry once right after the first-tap attempt fails. On Android,
-        // the very first speak sometimes fails but a replay succeeds immediately after.
         if (!forceReplay && introAutoRetriedAttemptId !== attemptId) {
           introAutoRetriedAttemptId = attemptId;
-          // Avoid scary “blocked” hints; we retry silently and only show troubleshooting if retry also fails.
           setIntroVoiceHint("Retrying audio…");
           setTimeout(() => {
-            // still latest attempt and still not started?
-            if (attemptId !== voiceAttemptSeq) return;
-            if (welcomeSpoken) return;
-            try {
-              if (window.speechSynthesis) window.speechSynthesis.cancel();
-            } catch {
-              /* ignore */
-            }
+            if (attemptId !== voiceAttemptSeq || welcomeSpoken) return;
+            try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch {}
             speakIntro(true);
           }, 180);
           return;
         }
 
         setTimeout(() => {
-          // Only show if this is still the latest attempt AND the intro never started.
-          if (attemptId !== voiceAttemptSeq) return;
-          if (welcomeSpoken) return;
+          if (attemptId !== voiceAttemptSeq || welcomeSpoken) return;
           if (!synth.speaking && !synth.pending) {
-            setIntroVoiceHint(
-              "No sound? Turn up MEDIA volume and tap 🔊 Play again. If still silent: Brave Shields ↓ for this site, and ensure your phone has Text-to-Speech enabled."
-            );
+            setIntroVoiceHint("No sound? Turn up MEDIA volume and tap 🔊 Play again. If still silent: Brave Shields ↓ for this site, and ensure your phone has Text-to-Speech enabled.");
           }
         }, 1500);
       };
@@ -1305,22 +1287,30 @@
     // Voice + tap overlay (must run in a real user gesture — do not auto-dismiss)
     let voiceTapDismissed = false;
     function dismissTapOverlay() {
-      if (voiceTapDismissed) return;
-      voiceTapDismissed = true;
-      overlayTap.classList.remove("active");
-      /* Safari often returns an empty voice list until getVoices() runs in the same user gesture. */
-      try {
-        if (window.speechSynthesis) {
-          window.speechSynthesis.getVoices();
-          window.speechSynthesis.getVoices();
+        if (voiceTapDismissed) return;
+        voiceTapDismissed = true;
+        overlayTap.classList.remove("active");
+
+        // iOS REQUIRES speak() called synchronously in the gesture.
+        // Prime with a silent utterance to unlock audio, then speak real one.
+        const synth = window.speechSynthesis;
+        if (synth) {
+          try {
+            const primer = new SpeechSynthesisUtterance(" ");
+            primer.volume = 0;
+            primer.onend = () => speakIntro(false);
+            primer.onerror = () => speakIntro(false);
+            synth.speak(primer);
+          } catch {
+            speakIntro(false);
+          }
+        } else {
+          speakIntro(false);
         }
-      } catch {
-        /* ignore */
-      }
-      speakIntro(false);
-      overlayTap.removeEventListener("click", dismissTapOverlay);
-      overlayTap.removeEventListener("pointerdown", dismissTapOverlay);
-    }
+
+        overlayTap.removeEventListener("click", dismissTapOverlay);
+        overlayTap.removeEventListener("pointerdown", dismissTapOverlay);
+}
     /* pointerdown + click: mobile (Brave/Android) often delivers touch more reliably than delayed click */
     overlayTap.addEventListener("pointerdown", dismissTapOverlay);
     overlayTap.addEventListener("click", dismissTapOverlay);
