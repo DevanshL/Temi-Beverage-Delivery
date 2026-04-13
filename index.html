@@ -1030,21 +1030,34 @@
     }
 
     let voiceTapDismissed = false;
-    function dismissTapOverlay() {
-      if (voiceTapDismissed) return;
-      voiceTapDismissed = true;
-      overlayTap.classList.remove("active");
-      // iOS: call getVoices() inside this gesture to prime the voice list.
-      try {
-        if (window.speechSynthesis) {
-          window.speechSynthesis.getVoices();
-          window.speechSynthesis.getVoices();
-        }
-      } catch { /* ignore */ }
-      speakIntro(false);
-      overlayTap.removeEventListener("click",       dismissTapOverlay);
-      overlayTap.removeEventListener("pointerdown", dismissTapOverlay);
-    }
+      function dismissTapOverlay() {
+        if (voiceTapDismissed) return;
+        voiceTapDismissed = true;
+        overlayTap.classList.remove("active");
+        overlayTap.removeEventListener("click",       dismissTapOverlay);
+        overlayTap.removeEventListener("pointerdown", dismissTapOverlay);
+
+        const synth = window.speechSynthesis;
+        if (!synth) { speakIntro(false); return; }
+
+        // iOS/iPadOS: prime getVoices() inside the gesture.
+        try { synth.getVoices(); synth.getVoices(); } catch { /* ignore */ }
+
+        // Same flush trick as replay — warm up the synthesis engine first,
+        // then speak the real intro in onend. Fixes iPad "interrupted" on first tap.
+        const flush = new SpeechSynthesisUtterance("\u00A0");
+        flush.volume = 0;
+        flush.lang   = "en-US";
+        flush.onend   = () => speakIntro(false);
+        flush.onerror = (ev) => {
+          const code = ev?.error || "";
+          // "interrupted" here just means cancel() cleared it — still try the real one.
+          if (code === "canceled" || code === "interrupted") { speakIntro(false); return; }
+          speakIntro(false); // try anyway
+        };
+        synth.cancel(); // clear any stale queue from page load
+        synth.speak(flush);
+      }
     overlayTap.addEventListener("pointerdown", dismissTapOverlay);
     overlayTap.addEventListener("click",       dismissTapOverlay);
 
