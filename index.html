@@ -152,6 +152,7 @@
     .order-row.accepted { border-color: rgba(34, 197, 94, 0.45); }
     .order-row.cancelled { opacity: 0.75; border-color: rgba(248, 113, 113, 0.35); }
     #editOrderBanner { background: rgba(234, 179, 8, 0.15) !important; border-color: rgba(234, 179, 8, 0.4) !important; color: #fef3c7 !important; }
+    /* In-app message (replaces window.alert for on-brand UX) */
     #appDialog {
       z-index: 400;
       cursor: pointer;
@@ -222,11 +223,15 @@
     </div>
   </div>
 
+  <!-- Waiting overlay removed: we keep browsing like a food app; status is shown in the footer. -->
+
+  <!-- Tap to enable voice: browsers block speech until there is a user gesture (no autoplay on load). -->
   <div id="overlayTap" class="state-overlay active" style="z-index: 150;">
     <div class="state-card">
       <p class="mb-3"><strong>Tap anywhere</strong> to hear the welcome message. Audio cannot start automatically after you scan the QR code — this is a browser security rule.</p>
+      <!-- <p class="tap-hint mb-0">No sound? Use 🔊 Play again below after you close this.</p> -->
     </div>
-  </div>
+        </div>
 
   <div id="appDialog" class="state-overlay app-dialog--info" role="dialog" aria-modal="true" aria-labelledby="appDialogTitle">
     <div class="state-card app-dialog-card" id="appDialogCard">
@@ -234,10 +239,10 @@
       <p id="appDialogBody" class="mb-4"></p>
       <button type="button" class="btn btn-submit text-white w-100" id="appDialogOk">OK</button>
     </div>
-  </div>
+    </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
     import {
       getDatabase,
       ref,
@@ -250,12 +255,13 @@
       serverTimestamp,
     } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
 
+    /** Set once Firebase initializes; used by order actions. */
     let db = null;
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyCTOREQwSXlET_OH764k5bbwo4hn_GtvHA",
-      authDomain: "temi-beverage-delivery.firebaseapp.com",
-      databaseURL: "https://temi-beverage-delivery-default-rtdb.firebaseio.com",
+        const firebaseConfig = {
+            apiKey: "AIzaSyCTOREQwSXlET_OH764k5bbwo4hn_GtvHA",
+            authDomain: "temi-beverage-delivery.firebaseapp.com",
+            databaseURL: "https://temi-beverage-delivery-default-rtdb.firebaseio.com",
       projectId: "temi-beverage-delivery",
     };
 
@@ -264,6 +270,9 @@
 
     const el = (id) => document.getElementById(id);
 
+    /**
+     * In-app modal instead of `window.alert` (matches the dark theme; no “site says” browser chrome).
+     */
     function showAppDialog(message, opts = {}) {
       const overlay = el("appDialog");
       const titleEl = el("appDialogTitle");
@@ -278,7 +287,11 @@
       bodyEl.textContent = message || "";
       overlay.classList.toggle("app-dialog--info", variant === "info");
       overlay.classList.add("active");
-      try { okBtn.focus(); } catch { /* ignore */ }
+      try {
+        okBtn.focus();
+      } catch {
+        /* ignore */
+      }
 
       const close = () => {
         overlay.classList.remove("active");
@@ -286,10 +299,12 @@
         okBtn.onclick = null;
       };
       okBtn.onclick = () => close();
-      overlay.onclick = (ev) => { if (ev.target === overlay) close(); };
+      overlay.onclick = (ev) => {
+        if (ev.target === overlay) close();
+      };
     }
 
-    // ── Voice system ────────────────────────────────────────────────────────────
+    // ---- Voice system (simpler & more reliable on mobile) ----
 
     function showIntroTextBanner() {
       const banner = el("introBanner");
@@ -325,7 +340,9 @@
           voices: synth?.getVoices ? synth.getVoices().length : 0,
           ...extra,
         });
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
 
     function pickVoice(voices) {
@@ -345,7 +362,18 @@
         const v = voices.find((vv) => norm(vv.name) === norm(name));
         if (v) return v;
       }
-      const maleWords = ["male","daniel","fred","albert","arthur","thomas","david","oliver","james","mark"];
+      const maleWords = [
+        "male",
+        "daniel",
+        "fred",
+        "albert",
+        "arthur",
+        "thomas",
+        "david",
+        "oliver",
+        "james",
+        "mark",
+      ];
       const isMale = (v) => maleWords.some((w) => norm(v.name).includes(w));
       const en = voices.filter((v) => v.lang && norm(v.lang).startsWith("en"));
       const enUs = en.filter((v) => norm(v.lang).startsWith("en-us"));
@@ -371,26 +399,24 @@
             return;
           }
           if (typeof synth.resume === "function") synth.resume();
-        } catch { clearInterval(id); }
+        } catch {
+          clearInterval(id);
+        }
       }, 100);
       return () => clearInterval(id);
     }
 
-    /**
-     * Build and queue a SpeechSynthesisUtterance.
-     *
-     * iOS/iPadOS rules enforced here:
-     *  1. synth.speak() is called synchronously — no await / setTimeout before it.
-     *  2. We never call synth.cancel() immediately before synth.speak() in this
-     *     function (that kills the gesture context on Android Chrome/Brave).
-     *  3. If no voice is found we leave u.voice unset — iOS uses its system
-     *     default rather than silently failing.
-     */
     function doSpeak(forceReplay, voiceOverride) {
       const synth = window.speechSynthesis;
-      if (!synth) { showIntroTextBanner(); return; }
+      if (!synth) {
+        showIntroTextBanner();
+        return;
+      }
+
       if (!forceReplay && welcomeSpoken) return;
 
+      // IMPORTANT (Android Chrome/Brave): calling synth.cancel() right before speak()
+      // can kill the gesture-unlocked context and silently swallow TTS. We do NOT cancel here.
       debugVoice("doSpeak called", { forceReplay, voiceOverride: !!voiceOverride });
 
       const u = new SpeechSynthesisUtterance(INTRO_TEXT);
@@ -399,13 +425,8 @@
       u.volume = 1;
       u.pitch = 1.08;
 
-      // iOS: getVoices() may only return results inside a user gesture — call it
-      // fresh here rather than relying on a cached list from outside the gesture.
       const voices = synth.getVoices();
       const picked = voiceOverride || (voices.length ? pickVoice(voices) : null);
-      // FIX (iOS): if picked is null, do NOT abort — leave u.voice unset and let
-      // the platform use its default voice. Previously a missing voice could
-      // cause the utterance to be skipped silently on iPadOS.
       if (picked) u.voice = picked;
 
       let stopHack = null;
@@ -431,44 +452,53 @@
         showIntroTextBanner();
         debugVoice("utterance error", { code });
 
-        // Auto-retry once on first-tap failure (Android sometimes needs this).
+        // Auto-retry once right after the first-tap attempt fails. On Android,
+        // the very first speak sometimes fails but a replay succeeds immediately after.
         if (!forceReplay && introAutoRetriedAttemptId !== attemptId) {
           introAutoRetriedAttemptId = attemptId;
+          // Avoid scary “blocked” hints; we retry silently and only show troubleshooting if retry also fails.
           setIntroVoiceHint("Retrying audio…");
           setTimeout(() => {
+            // still latest attempt and still not started?
             if (attemptId !== voiceAttemptSeq) return;
             if (welcomeSpoken) return;
-            try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch { /* ignore */ }
+            try {
+              if (window.speechSynthesis) window.speechSynthesis.cancel();
+            } catch {
+              /* ignore */
+            }
             speakIntro(true);
           }, 180);
           return;
         }
 
         setTimeout(() => {
+          // Only show if this is still the latest attempt AND the intro never started.
           if (attemptId !== voiceAttemptSeq) return;
           if (welcomeSpoken) return;
           if (!synth.speaking && !synth.pending) {
             setIntroVoiceHint(
-              "No sound? Turn up MEDIA volume and tap 🔊 Play again. " +
-              "If still silent: check Settings → Accessibility → Spoken Content → Voices " +
-              "and ensure an English voice is downloaded. On Brave: lower Shields for this site."
+              "No sound? Turn up MEDIA volume and tap 🔊 Play again. If still silent: Brave Shields ↓ for this site, and ensure your phone has Text-to-Speech enabled."
             );
           }
         }, 1500);
       };
 
-      // Speak immediately — must be synchronous inside the gesture handler.
       synth.speak(u);
       debugVoice("synth.speak queued");
     }
 
-    // Prime voice list early so the first tap can pick the preferred voice.
+    // One-time voiceschanged: prime voices early so the first tap can pick the preferred voice.
     try {
       if (window.speechSynthesis) {
         window.speechSynthesis.getVoices();
-        window.speechSynthesis.addEventListener("voiceschanged", () => {}, { once: true });
+        window.speechSynthesis.addEventListener("voiceschanged", () => {}, {
+          once: true,
+        });
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     function speakIntro(forceReplay = false) {
       showIntroTextBanner();
@@ -480,135 +510,181 @@
         return;
       }
 
-      // Speak immediately inside the gesture — do not await anything first.
+      // KEY: Always speak immediately inside the gesture, even if voices aren't loaded yet.
+      // On Android Chrome/Brave, waiting for voiceschanged can lose the gesture window.
       doSpeak(forceReplay, null);
 
-      // Prime voices for better replay quality later (safe — happens after speak()).
+      // Prime voices for better replay quality later.
       try {
         if (!synth.getVoices().length) {
           synth.addEventListener("voiceschanged", () => {}, { once: true });
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
-
-    // ── Replay button ────────────────────────────────────────────────────────────
-    // FIX (iOS + Android): The old pattern was cancel() → setTimeout → speak().
-    // • setTimeout breaks iOS gesture context (speak() must be synchronous in handler).
-    // • cancel() immediately before speak() can swallow TTS on Android Chrome/Brave.
-    //
-    // Safe pattern for both platforms:
-    //   1. Speak a silent flush utterance synchronously (satisfies iOS gesture rule).
-    //   2. On flush onend/onerror, call speakIntro() — gesture already unlocked,
-    //      so Android is happy (no abrupt cancel right before the real speak).
-    //   3. cancel() is called once, BEFORE the flush, not before the real utterance.
-    const btnReplay = el("btnReplayIntro");
-    if (btnReplay) {
-      btnReplay.addEventListener("click", () => {
-        const synth = window.speechSynthesis;
-        if (!synth) { speakIntro(true); return; }
-
-        // Build flush utterance first (synchronous — still inside the gesture).
-        const flush = new SpeechSynthesisUtterance("\u00A0"); // non-breaking space
-        flush.volume = 0;
-        flush.lang = "en-US";
-
-        const afterFlush = () => {
-          // Gesture is already unlocked; safe to call speakIntro now.
-          speakIntro(true);
-        };
-        flush.onend = afterFlush;
-        // onerror fires on iOS if the flush itself is interrupted — still try the real one.
-        flush.onerror = (ev) => {
-          const code = ev?.error || "";
-          if (code === "canceled" || code === "interrupted") {
-            // Another cancel happened between — just try directly.
-            speakIntro(true);
-            return;
-          }
-          afterFlush();
-        };
-
-        // cancel() here is safe: it's before the flush, not before the real utterance.
-        synth.cancel();
-        synth.speak(flush);
-      });
-    }
-
-    // ── Inventory / catalog ──────────────────────────────────────────────────────
 
     const DEFAULT_INVENTORY = {
-      coke_can:        { name: "Coke Can",                    emoji: "🥤", imageUrl: "", category: "beverage", quantity: 10 },
-      water:           { name: "Water",                       emoji: "💧", imageUrl: "", category: "beverage", quantity: 10 },
-      green_tea:       { name: "Green Tea",                   emoji: "🍵", imageUrl: "", category: "beverage", quantity: 8  },
-      juice:           { name: "Juice",                       emoji: "🧃", imageUrl: "", category: "beverage", quantity: 6  },
-      coffee:          { name: "Coffee",                      emoji: "☕", imageUrl: "", category: "beverage", quantity: 5  },
-      chips:           { name: "Chips (Living Labs rack)",    emoji: "🍟", imageUrl: "", category: "snack",    quantity: 8  },
-      cookies:         { name: "Cookies (Living Labs rack)",  emoji: "🍪", imageUrl: "", category: "snack",    quantity: 10 },
-      chocolate:       { name: "Chocolate",                   emoji: "🍫", imageUrl: "", category: "snack",    quantity: 7  },
-      nuts_living_labs:{ name: "Mixed Nuts (Living Labs rack)",emoji:"🥜", imageUrl: "", category: "snack",    quantity: 6  },
-      granola_bar:     { name: "Granola Bar (Living Labs rack)",emoji:"🌾",imageUrl: "", category: "snack",    quantity: 9  },
+      coke_can: {
+        name: "Coke Can",
+        emoji: "🥤",
+        imageUrl: "",
+        category: "beverage",
+        quantity: 10,
+      },
+      water: {
+        name: "Water",
+        emoji: "💧",
+        imageUrl: "",
+        category: "beverage",
+        quantity: 10,
+      },
+      green_tea: {
+        name: "Green Tea",
+        emoji: "🍵",
+        imageUrl: "",
+        category: "beverage",
+        quantity: 8,
+      },
+      juice: {
+        name: "Juice",
+        emoji: "🧃",
+        imageUrl: "",
+        category: "beverage",
+        quantity: 6,
+      },
+      coffee: {
+        name: "Coffee",
+        emoji: "☕",
+        imageUrl: "",
+        category: "beverage",
+        quantity: 5,
+      },
+      chips: {
+        name: "Chips (Living Labs rack)",
+        emoji: "🍟",
+        imageUrl: "",
+        category: "snack",
+        quantity: 8,
+      },
+      cookies: {
+        name: "Cookies (Living Labs rack)",
+        emoji: "🍪",
+        imageUrl: "",
+        category: "snack",
+        quantity: 10,
+      },
+      chocolate: {
+        name: "Chocolate",
+        emoji: "🍫",
+        imageUrl: "",
+        category: "snack",
+        quantity: 7,
+      },
+      nuts_living_labs: {
+        name: "Mixed Nuts (Living Labs rack)",
+        emoji: "🥜",
+        imageUrl: "",
+        category: "snack",
+        quantity: 6,
+      },
+      granola_bar: {
+        name: "Granola Bar (Living Labs rack)",
+        emoji: "🌾",
+        imageUrl: "",
+        category: "snack",
+        quantity: 9,
+      },
     };
 
+    /** Filled from Firebase; empty until first snapshot (or fallback if Firebase unavailable). */
     let inventory = {};
     const cart = {};
+    /** @type {string | null} */
     let editingOrderId = null;
+    /** Line items from the order when Edit started — used so + caps include stock already reserved for this order. */
     let editBaselineItems = null;
     let ordersUnsubscribe = null;
+    /** Last snapshot of this user’s orders (so we can re-render right after entering edit mode). */
     let lastOrdersRows = [];
 
-    const LS_SESSION    = "temi_session_id";
+    const LS_SESSION = "temi_session_id";
     const LS_ORDER_QUEUE = "temi_order_queue";
 
     function getOrCreateSessionId() {
       let s = localStorage.getItem(LS_SESSION);
       if (!s) {
-        s = typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID()
-          : "s-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10);
+        s =
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : "s-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10);
         localStorage.setItem(LS_SESSION, s);
       }
       return s;
     }
+
     const sessionId = getOrCreateSessionId();
 
     function loadOrderQueue() {
-      try { const raw = localStorage.getItem(LS_ORDER_QUEUE); return raw ? JSON.parse(raw) : []; }
-      catch { return []; }
+      try {
+        const raw = localStorage.getItem(LS_ORDER_QUEUE);
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
     }
-    function saveOrderQueue(ids) { localStorage.setItem(LS_ORDER_QUEUE, JSON.stringify(ids)); }
+
+    function saveOrderQueue(ids) {
+      localStorage.setItem(LS_ORDER_QUEUE, JSON.stringify(ids));
+    }
+
     function addOrderToQueue(orderId) {
       const q = loadOrderQueue();
-      if (!q.includes(orderId)) { q.push(orderId); saveOrderQueue(q); }
+      if (!q.includes(orderId)) {
+        q.push(orderId);
+        saveOrderQueue(q);
+      }
     }
+
     function isMyOrder(orderId, data) {
       if (!data) return false;
       if (data.sessionId === sessionId) return true;
       return loadOrderQueue().includes(orderId);
     }
+
     function formatOrderShortId(id) {
       if (!id) return "";
       return id.length > 8 ? "…" + id.slice(-6) : id;
     }
+
     function formatOrderItems(items) {
       if (!items || typeof items !== "object") return "—";
       return Object.keys(items)
         .filter((k) => items[k] > 0)
-        .map((k) => `${inventory[k]?.name || k} ×${items[k]}`)
+        .map((k) => {
+          const name = inventory[k]?.name || k;
+          return `${name} ×${items[k]}`;
+        })
         .join(", ");
     }
+
     function statusLabel(st) {
       const s = (st || "").toLowerCase();
-      if (s === "pending" || s === "")                              return { text: "Queued — waiting for admin", cls: "text-warning" };
-      if (s === "ongoing" || s === "accepted" || s === "complete") return { text: "Accepted — on the way",     cls: "text-success" };
-      if (s === "cancelled" || s === "canceled")                   return { text: "Cancelled",                 cls: "text-danger"  };
+      if (s === "pending" || s === "") return { text: "Queued — waiting for admin", cls: "text-warning" };
+      if (s === "ongoing" || s === "accepted" || s === "complete")
+        return { text: "Accepted — on the way", cls: "text-success" };
+      if (s === "cancelled" || s === "canceled")
+        return { text: "Cancelled", cls: "text-danger" };
       return { text: st || "Unknown", cls: "text-secondary" };
     }
+
     function showFirebaseError(msg) {
       const box = el("firebaseError");
       box.textContent = msg;
       box.classList.remove("d-none");
     }
 
+    /** Max quantity allowed in cart for this SKU (global stock + this order’s baseline while editing). */
     function maxCartQtyForSku(sku) {
       const globalQ = Math.max(0, Number(inventory[sku]?.quantity) || 0);
       if (editingOrderId && editBaselineItems) {
@@ -658,10 +734,18 @@
         row.appendChild(col);
       });
 
-      bev.querySelectorAll(".qty-minus").forEach((b) => b.addEventListener("click", () => adjustCart(b.dataset.sku, -1)));
-      bev.querySelectorAll(".qty-plus").forEach((b)  => b.addEventListener("click", () => adjustCart(b.dataset.sku,  1)));
-      snk.querySelectorAll(".qty-minus").forEach((b) => b.addEventListener("click", () => adjustCart(b.dataset.sku, -1)));
-      snk.querySelectorAll(".qty-plus").forEach((b)  => b.addEventListener("click", () => adjustCart(b.dataset.sku,  1)));
+      bev.querySelectorAll(".qty-minus").forEach((b) =>
+        b.addEventListener("click", () => adjustCart(b.dataset.sku, -1))
+      );
+      bev.querySelectorAll(".qty-plus").forEach((b) =>
+        b.addEventListener("click", () => adjustCart(b.dataset.sku, 1))
+      );
+      snk.querySelectorAll(".qty-minus").forEach((b) =>
+        b.addEventListener("click", () => adjustCart(b.dataset.sku, -1))
+      );
+      snk.querySelectorAll(".qty-plus").forEach((b) =>
+        b.addEventListener("click", () => adjustCart(b.dataset.sku, 1))
+      );
     }
 
     function adjustCart(sku, delta) {
@@ -677,7 +761,10 @@
     function updateCartUi() {
       const entries = Object.keys(cart).filter((k) => cart[k] > 0);
       const sum = entries.reduce((a, k) => a + cart[k], 0);
-      el("cartSummary").textContent = sum === 0 ? "No items selected" : `${sum} item${sum === 1 ? "" : "s"} in cart`;
+      el("cartSummary").textContent =
+        sum === 0
+          ? "No items selected"
+          : `${sum} item${sum === 1 ? "" : "s"} in cart`;
       const btn = el("btnSubmit");
       if (editingOrderId) {
         btn.disabled = sum === 0;
@@ -692,13 +779,20 @@
       const wrap = el("orderFooterStatus");
       const text = el("orderFooterStatusText");
       if (!wrap || !text) return;
-      if (mode === "hidden") { wrap.classList.add("d-none"); return; }
+
+      if (mode === "hidden") {
+        wrap.classList.add("d-none");
+        return;
+      }
+
       wrap.classList.remove("d-none");
+
       const spinner = wrap.querySelector(".spinner-border");
       if (mode === "pending") {
         if (spinner) spinner.classList.remove("d-none");
         text.className = "text-secondary";
-        text.textContent = customText || "Waiting for admin to accept queued orders…";
+        text.textContent =
+          customText || "Waiting for admin to accept queued orders…";
       } else if (mode === "accepted") {
         if (spinner) spinner.classList.add("d-none");
         text.className = "text-success fw-semibold";
@@ -710,13 +804,24 @@
       }
     }
 
-    function hideWaiting() { setFooterStatus("hidden"); }
+    function hideWaiting() {
+      setFooterStatus("hidden");
+    }
 
     function updateFooterFromOrders(rows) {
-      const pending  = rows.filter((o) => { const s = (o.status || "pending").toLowerCase(); return s === "pending" || s === ""; });
-      const accepted = rows.filter((o) => { const s = (o.status || "").toLowerCase(); return s === "ongoing" || s === "accepted" || s === "complete"; });
+      const pending = rows.filter((o) => {
+        const s = (o.status || "pending").toLowerCase();
+        return s === "pending" || s === "";
+      });
+      const accepted = rows.filter((o) => {
+        const s = (o.status || "").toLowerCase();
+        return s === "ongoing" || s === "accepted" || s === "complete";
+      });
       if (pending.length > 0) {
-        setFooterStatus("pending", `${pending.length} order(s) in queue — waiting for admin`);
+        setFooterStatus(
+          "pending",
+          `${pending.length} order(s) in queue — waiting for admin`
+        );
       } else if (accepted.length > 0 && rows.length > 0) {
         setFooterStatus("accepted");
       } else {
@@ -725,24 +830,38 @@
     }
 
     function renderOrdersPanel(rows) {
-      const list  = el("ordersList");
+      const list = el("ordersList");
       const empty = el("ordersEmpty");
       if (!list || !empty) return;
+
       rows.sort((a, b) => String(a.id || "").localeCompare(String(b.id || "")));
-      if (rows.length === 0) { empty.classList.remove("d-none"); list.innerHTML = ""; return; }
+
+      if (rows.length === 0) {
+        empty.classList.remove("d-none");
+        list.innerHTML = "";
+        return;
+      }
       empty.classList.add("d-none");
       list.innerHTML = "";
+
       rows.forEach((o) => {
-        const st  = (o.status || "pending").toLowerCase();
+        const st = (o.status || "pending").toLowerCase();
         const lbl = statusLabel(o.status);
-        const canEdit       = st === "pending" || st === "";
-        const isEditingThis = Boolean(editingOrderId) && String(o.id) === String(editingOrderId);
+        const canEdit = st === "pending" || st === "";
+        const isEditingThis =
+          Boolean(editingOrderId) && String(o.id) === String(editingOrderId);
         const div = document.createElement("div");
         div.className = "order-row";
-        if (st === "ongoing" || st === "accepted" || st === "complete") div.classList.add("accepted");
-        if (st === "cancelled" || st === "canceled")                    div.classList.add("cancelled");
+        if (st === "ongoing" || st === "accepted" || st === "complete") {
+          div.classList.add("accepted");
+        }
+        if (st === "cancelled" || st === "canceled") {
+          div.classList.add("cancelled");
+        }
+
         const shortId = formatOrderShortId(o.id);
-        const line    = formatOrderItems(o.items);
+        const line = formatOrderItems(o.items);
+
         div.innerHTML = `
           <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
             <div>
@@ -754,21 +873,32 @@
               <div class="small ${lbl.cls} mt-1">${lbl.text}</div>
             </div>
             <div class="d-flex flex-wrap gap-1 align-items-center">
-              ${canEdit && !editingOrderId        ? `<button type="button" class="btn btn-sm btn-outline-warning btn-mod" data-id="${o.id}">Modify</button>` : ``}
-              ${canEdit && editingOrderId && !isEditingThis ? `<span class="small text-secondary">Finish the edit above first</span>` : ``}
+              ${
+                canEdit && !editingOrderId
+                  ? `<button type="button" class="btn btn-sm btn-outline-warning btn-mod" data-id="${o.id}">Modify</button>`
+                  : ``
+              }
+              ${
+                canEdit && editingOrderId && !isEditingThis
+                  ? `<span class="small text-secondary">Finish the edit above first</span>`
+                  : ``
+              }
             </div>
           </div>`;
         list.appendChild(div);
       });
     }
 
+    // Event delegation (stable even when orders list re-renders frequently)
     const ordersListEl = el("ordersList");
     if (ordersListEl) {
       ordersListEl.addEventListener("click", (e) => {
-        const t   = /** @type {HTMLElement} */ (e.target);
+        const t = /** @type {HTMLElement} */ (e.target);
         if (!t) return;
         const mod = t.closest && t.closest(".btn-mod");
-        if (mod && mod.dataset && mod.dataset.id) beginEditOrder(mod.dataset.id);
+        if (mod && mod.dataset && mod.dataset.id) {
+          beginEditOrder(mod.dataset.id);
+        }
       });
     }
 
@@ -782,13 +912,36 @@
           if (!data) return;
           if (!isMyOrder(child.key, data)) return;
           let createdAt = 0;
-          if (data.createdAt && typeof data.createdAt === "number") createdAt = data.createdAt;
-          rows.push({ id: child.key, ...data, createdAt });
+          if (data.createdAt && typeof data.createdAt === "number") {
+            createdAt = data.createdAt;
+          }
+          rows.push({
+            id: child.key,
+            ...data,
+            createdAt,
+          });
         });
         lastOrdersRows = rows;
         renderOrdersPanel(rows);
         updateFooterFromOrders(rows);
       });
+    }
+
+    async function cancelOrder(orderId) {
+      if (!db) return;
+      if (!confirm("Cancel this order?")) return;
+      try {
+        await update(ref(db, "orders/" + orderId), {
+          status: "cancelled",
+          cancelledAt: serverTimestamp(),
+        });
+      } catch (e) {
+        console.error(e);
+        showAppDialog("Could not cancel. Check Firebase rules.", {
+          title: "Couldn't cancel",
+          variant: "error",
+        });
+      }
     }
 
     function beginEditOrder(orderId) {
@@ -799,68 +952,109 @@
           if (!data || !data.items) return;
           const st = (data.status || "").toLowerCase();
           if (st !== "pending" && st !== "") {
-            showAppDialog("Only queued orders can be edited.", { title: "Can't edit this order", variant: "info" });
+            showAppDialog("Only queued orders can be edited.", {
+              title: "Can't edit this order",
+              variant: "info",
+            });
             return;
           }
           Object.keys(cart).forEach((k) => delete cart[k]);
-          Object.keys(data.items).forEach((k) => { cart[k] = data.items[k]; });
-          editingOrderId    = orderId;
+          Object.keys(data.items).forEach((k) => {
+            cart[k] = data.items[k];
+          });
+          editingOrderId = orderId;
           editBaselineItems = {};
           Object.keys(data.items || {}).forEach((k) => {
             const n = Number(data.items[k]) || 0;
             if (n > 0) editBaselineItems[k] = n;
           });
-          const b    = el("editOrderBanner");
+          const b = el("editOrderBanner");
           const btxt = el("editOrderBannerText");
           if (b && btxt) {
-            btxt.textContent = "Editing order " + formatOrderShortId(orderId) + " — change quantities below, then Save changes.";
+            btxt.textContent =
+              "Editing order " + formatOrderShortId(orderId) + " — change quantities below, then Save changes.";
             b.classList.remove("d-none");
           }
           scrollTo({ top: 0, behavior: "smooth" });
           updateCartUi();
           renderCatalog();
-          if (lastOrdersRows.length) renderOrdersPanel(lastOrdersRows);
+          if (lastOrdersRows.length) {
+            renderOrdersPanel(lastOrdersRows);
+          }
         })
         .catch((e) => {
           console.error(e);
-          showAppDialog("Could not load order for editing. Check connection/rules.", { title: "Couldn't load order", variant: "error" });
+          showAppDialog("Could not load order for editing. Check connection/rules.", {
+            title: "Couldn't load order",
+            variant: "error",
+          });
         });
     }
 
     function endEditOrder() {
-      editingOrderId    = null;
+      editingOrderId = null;
       editBaselineItems = null;
       const b = el("editOrderBanner");
       if (b) b.classList.add("d-none");
       updateCartUi();
-      if (lastOrdersRows.length) renderOrdersPanel(lastOrdersRows);
+      if (lastOrdersRows.length) {
+        renderOrdersPanel(lastOrdersRows);
+      }
     }
 
+    /**
+     * Merge Firebase `inventory` snapshot into global `inventory`.
+     * Firebase is the source of truth: removed SKUs disappear; new SKUs appear.
+     * `DEFAULT_INVENTORY` only fills in missing fields for known seed SKUs or minimal defaults for new SKUs.
+     */
     function mergeRemoteInventory(val) {
-      if (!val || typeof val !== "object") { inventory = {}; return; }
+      if (!val || typeof val !== "object") {
+        inventory = {};
+        return;
+      }
       const skus = Object.keys(val);
-      if (skus.length === 0) { inventory = {}; return; }
+      if (skus.length === 0) {
+        inventory = {};
+        return;
+      }
       inventory = {};
       skus.forEach((sku) => {
-        const base = DEFAULT_INVENTORY[sku] || { name: sku, emoji: "📦", imageUrl: "", category: "snack", quantity: 0 };
+        const base =
+          DEFAULT_INVENTORY[sku] || {
+            name: sku,
+            emoji: "📦",
+            imageUrl: "",
+            category: "snack",
+            quantity: 0,
+          };
         inventory[sku] = { ...base, ...val[sku] };
       });
     }
 
+    /**
+     * Drop cart quantities above what’s allowed now (uses same cap as +/−: `maxCartQtyForSku`).
+     * Call after inventory updates so lines don’t stay “stuck” when pantry hits 0 or another user takes stock.
+     */
     function clampCartToStock() {
       Object.keys({ ...cart }).forEach((sku) => {
         const maxQ = maxCartQtyForSku(sku);
-        const q    = cart[sku] || 0;
+        const q = cart[sku] || 0;
         if (q > maxQ) cart[sku] = maxQ;
         if ((cart[sku] || 0) <= 0) delete cart[sku];
       });
     }
 
+    /** True when `applyInventoryDeltaOrThrow` aborted for insufficient stock (or missing inventory node). */
     function isInventorySubmitConflict(err) {
       const m = String(err?.message || "");
-      return /out of stock|need \d+ more/i.test(m) || m.includes("Inventory not available.") || m === "Could not update inventory.";
+      return (
+        /out of stock|need \d+ more/i.test(m) ||
+        m.includes("Inventory not available.") ||
+        m === "Could not update inventory."
+      );
     }
 
+    /** Positive counts only (SKU → qty to remove from stock). */
     function positiveItemCounts(items) {
       const out = {};
       for (const [k, v] of Object.entries(items || {})) {
@@ -870,6 +1064,7 @@
       return out;
     }
 
+    /** Signed delta: +n take n from stock, −n return n to stock. */
     function negateInventoryDelta(delta) {
       const out = {};
       for (const [k, v] of Object.entries(delta || {})) {
@@ -880,66 +1075,105 @@
     }
 
     function computeItemsDelta(oldItems, newItems) {
-      const keys  = new Set([...Object.keys(oldItems || {}), ...Object.keys(newItems || {})]);
+      const keys = new Set([
+        ...Object.keys(oldItems || {}),
+        ...Object.keys(newItems || {}),
+      ]);
       const delta = {};
       for (const k of keys) {
         const old = Number(oldItems?.[k]) || 0;
         const neu = Number(newItems?.[k]) || 0;
-        const d   = neu - old;
+        const d = neu - old;
         if (d !== 0) delta[k] = d;
       }
       return delta;
     }
 
+    /**
+     * Single transaction on `inventory/`: apply signed per-SKU deltas atomically.
+     * +n removes n from stock; −n returns n to stock.
+     */
     async function applyInventoryDeltaOrThrow(deltaMap) {
-      const entries = Object.entries(deltaMap || {}).filter(([, d]) => Number(d) !== 0);
+      const entries = Object.entries(deltaMap || {}).filter(
+        ([, d]) => Number(d) !== 0
+      );
       if (entries.length === 0) return;
+
       let failReason = null;
       const res = await runTransaction(ref(db, "inventory"), (inv) => {
-        if (!inv || typeof inv !== "object") { failReason = "Inventory not available."; return; }
+        if (!inv || typeof inv !== "object") {
+          failReason = "Inventory not available.";
+          return;
+        }
         for (const [sku, dRaw] of entries) {
           const d = Number(dRaw) || 0;
           if (d <= 0) continue;
           const q = Number(inv?.[sku]?.quantity) || 0;
-          if (q < d) { const name = inv?.[sku]?.name || sku; failReason = `${name} is out of stock (need ${d} more, have ${q}).`; return; }
+          if (q < d) {
+            const name = inv?.[sku]?.name || sku;
+            failReason = `${name} is out of stock (need ${d} more, have ${q}).`;
+                return;
+            }
         }
         for (const [sku, dRaw] of entries) {
           const d = Number(dRaw) || 0;
           if (d === 0) continue;
-          const q    = Number(inv?.[sku]?.quantity) || 0;
-          inv[sku]   = inv[sku] || {};
+          const q = Number(inv?.[sku]?.quantity) || 0;
+          inv[sku] = inv[sku] || {};
           inv[sku].quantity = q - d;
         }
         return inv;
       });
-      if (!res.committed) throw new Error(failReason || "Could not update inventory.");
+
+      if (!res.committed) {
+        throw new Error(failReason || "Could not update inventory.");
+      }
     }
 
     async function submitOrder(db) {
       const items = positiveItemCounts(cart);
-      const keys  = Object.keys(items);
+      const keys = Object.keys(items);
       if (keys.length === 0) return;
 
       try {
         if (editingOrderId) {
           const oid = editingOrderId;
+
           let delta;
           {
-            const snap2   = await get(ref(db, "orders/" + oid));
-            const prev2   = snap2.val() || {};
-            const oldItems2  = prev2.items || {};
-            const hadDebit2  = !!prev2.inventoryDebitedAt;
-            delta = hadDebit2 ? computeItemsDelta(oldItems2, items) : items;
+            const snap2 = await get(ref(db, "orders/" + oid));
+            const prev2 = snap2.val() || {};
+            const oldItems2 = prev2.items || {};
+            const hadDebit2 = !!prev2.inventoryDebitedAt;
+            if (!hadDebit2) {
+              delta = items;
+            } else {
+              delta = computeItemsDelta(oldItems2, items);
+            }
           }
-          if (Object.keys(delta).length > 0) await applyInventoryDeltaOrThrow(delta);
+
+          if (Object.keys(delta).length > 0) {
+            await applyInventoryDeltaOrThrow(delta);
+          }
+
           try {
-            await update(ref(db, "orders/" + oid), { items, status: "pending", updatedAt: serverTimestamp(), inventoryDebitedAt: serverTimestamp() });
+            await update(ref(db, "orders/" + oid), {
+              items,
+              status: "pending",
+              updatedAt: serverTimestamp(),
+              inventoryDebitedAt: serverTimestamp(),
+            });
           } catch (writeErr) {
             if (Object.keys(delta).length > 0) {
-              try { await applyInventoryDeltaOrThrow(negateInventoryDelta(delta)); } catch (rb) { console.error("Inventory rollback failed", rb); }
+              try {
+                await applyInventoryDeltaOrThrow(negateInventoryDelta(delta));
+              } catch (rb) {
+                console.error("Inventory rollback failed", rb);
+              }
             }
             throw writeErr;
           }
+
           await set(ref(db, "admin/notification_pending"), true);
           await set(ref(db, "admin/latest_order_id"), oid);
           endEditOrder();
@@ -951,17 +1185,31 @@
         }
 
         const ordersRef = ref(db, "orders");
-        const newRef    = push(ordersRef);
-        const orderId   = newRef.key;
-        const payload   = { items, status: "pending", sessionId, createdAt: serverTimestamp(), source: "customer_web", inventoryDebitedAt: serverTimestamp() };
-        const take      = { ...items };
+        const newRef = push(ordersRef);
+        const orderId = newRef.key;
+        const payload = {
+          items,
+          status: "pending",
+          sessionId,
+          createdAt: serverTimestamp(),
+          source: "customer_web",
+          inventoryDebitedAt: serverTimestamp(),
+        };
+
+        const take = { ...items };
         await applyInventoryDeltaOrThrow(take);
+
         try {
           await set(newRef, payload);
         } catch (writeErr) {
-          try { await applyInventoryDeltaOrThrow(negateInventoryDelta(take)); } catch (rb) { console.error("Inventory rollback failed", rb); }
+          try {
+            await applyInventoryDeltaOrThrow(negateInventoryDelta(take));
+          } catch (rb) {
+            console.error("Inventory rollback failed", rb);
+          }
           throw writeErr;
         }
+
         await set(ref(db, "admin/notification_pending"), true);
         await set(ref(db, "admin/latest_order_id"), orderId);
         addOrderToQueue(orderId);
@@ -977,14 +1225,23 @@
             clampCartToStock();
             renderCatalog();
             updateCartUi();
-          } catch (refreshErr) { console.error("Could not refresh inventory", refreshErr); }
+          } catch (refreshErr) {
+            console.error("Could not refresh inventory", refreshErr);
+          }
         }
-        const msg = e?.message || "Could not submit order. Check connection and Firebase rules.";
-        showAppDialog(msg, { title: isInventorySubmitConflict(e) ? "Not enough stock" : "Couldn't submit order", variant: "error" });
+        const msg =
+          e?.message ||
+          "Could not submit order. Check connection and Firebase rules.";
+        showAppDialog(msg, {
+          title: isInventorySubmitConflict(e)
+            ? "Not enough stock"
+            : "Couldn't submit order",
+          variant: "error",
+        });
       }
     }
 
-    // ── Firebase init ────────────────────────────────────────────────────────────
+    // --- Firebase ---
     try {
       const app = initializeApp(firebaseConfig);
       db = getDatabase(app);
@@ -994,15 +1251,22 @@
     }
 
     if (db) {
+      // Avoid flashing DEFAULT_INVENTORY items that Firebase may have removed (~200ms+ until snapshot).
       inventory = {};
-      el("rowBeverages").innerHTML = '<div class="col-12 text-secondary small">Loading…</div>';
-      el("rowSnacks").innerHTML    = "";
+      el("rowBeverages").innerHTML =
+        '<div class="col-12 text-secondary small">Loading…</div>';
+      el("rowSnacks").innerHTML = "";
       updateCartUi();
 
       onValue(
         ref(db, "inventory"),
-        (snap) => { mergeRemoteInventory(snap.val()); clampCartToStock(); renderCatalog(); updateCartUi(); },
-        (err)  => {
+        (snap) => {
+          mergeRemoteInventory(snap.val());
+          clampCartToStock();
+          renderCatalog();
+          updateCartUi();
+        },
+        (err) => {
           console.error(err);
           showFirebaseError("Could not read inventory. Using offline defaults.");
           inventory = { ...DEFAULT_INVENTORY };
@@ -1015,53 +1279,67 @@
       updateCartUi();
     }
 
-    el("btnSubmit").addEventListener("click", () => { if (!db) return; submitOrder(db); });
+    el("btnSubmit").addEventListener("click", () => {
+      if (!db) return;
+      submitOrder(db);
+    });
 
-    // ── Tap overlay (voice unlock) ───────────────────────────────────────────────
     const overlayTap = el("overlayTap");
 
     if (db) {
       try {
         const legacy = sessionStorage.getItem("temi_active_order_id");
-        if (legacy && !loadOrderQueue().includes(legacy)) addOrderToQueue(legacy);
+        if (legacy && !loadOrderQueue().includes(legacy)) {
+          addOrderToQueue(legacy);
+        }
         sessionStorage.removeItem("temi_active_order_id");
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       startOrdersListener(db);
+      /* Do NOT auto-hide the tap overlay when the user has queued orders in localStorage.
+       * That dismissed the sheet without a real gesture — Brave/Safari then block speech, so
+       * the overlay vanished and no voice played. One tap is always required to unlock voice. */
     }
 
+    // Voice + tap overlay (must run in a real user gesture — do not auto-dismiss)
     let voiceTapDismissed = false;
-      function dismissTapOverlay() {
-        if (voiceTapDismissed) return;
-        voiceTapDismissed = true;
-        overlayTap.classList.remove("active");
-        overlayTap.removeEventListener("click",       dismissTapOverlay);
-        overlayTap.removeEventListener("pointerdown", dismissTapOverlay);
-
-        const synth = window.speechSynthesis;
-        if (!synth) { speakIntro(false); return; }
-
-        // iOS/iPadOS: prime getVoices() inside the gesture.
-        try { synth.getVoices(); synth.getVoices(); } catch { /* ignore */ }
-
-        // Same flush trick as replay — warm up the synthesis engine first,
-        // then speak the real intro in onend. Fixes iPad "interrupted" on first tap.
-        const flush = new SpeechSynthesisUtterance("\u00A0");
-        flush.volume = 0;
-        flush.lang   = "en-US";
-        flush.onend   = () => speakIntro(false);
-        flush.onerror = (ev) => {
-          const code = ev?.error || "";
-          // "interrupted" here just means cancel() cleared it — still try the real one.
-          if (code === "canceled" || code === "interrupted") { speakIntro(false); return; }
-          speakIntro(false); // try anyway
-        };
-        synth.cancel(); // clear any stale queue from page load
-        synth.speak(flush);
+    function dismissTapOverlay() {
+      if (voiceTapDismissed) return;
+      voiceTapDismissed = true;
+      overlayTap.classList.remove("active");
+      /* Safari often returns an empty voice list until getVoices() runs in the same user gesture. */
+      try {
+        if (window.speechSynthesis) {
+          window.speechSynthesis.getVoices();
+          window.speechSynthesis.getVoices();
+        }
+      } catch {
+        /* ignore */
       }
+      speakIntro(false);
+      overlayTap.removeEventListener("click", dismissTapOverlay);
+      overlayTap.removeEventListener("pointerdown", dismissTapOverlay);
+    }
+    /* pointerdown + click: mobile (Brave/Android) often delivers touch more reliably than delayed click */
     overlayTap.addEventListener("pointerdown", dismissTapOverlay);
-    overlayTap.addEventListener("click",       dismissTapOverlay);
+    overlayTap.addEventListener("click", dismissTapOverlay);
+
+    const btnReplay = el("btnReplayIntro");
+    if (btnReplay) {
+      btnReplay.addEventListener("click", () => {
+        // For replay only: cancel is OK (new gesture). Add a tiny delay to avoid
+        // Android swallowing speak() immediately after cancel().
+        try {
+          if (window.speechSynthesis) window.speechSynthesis.cancel();
+        } catch {
+          /* ignore */
+        }
+        setTimeout(() => speakIntro(true), 100);
+      });
+    }
 
     updateCartUi();
-  </script>
+    </script>
 </body>
 </html>
