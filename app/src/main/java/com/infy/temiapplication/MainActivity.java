@@ -50,6 +50,8 @@ public class MainActivity extends AppCompatActivity implements
     private DatabaseReference ordersRef;
     private DatabaseReference activeOrderIdRef;
     private DatabaseReference robotStateRef;
+    private DatabaseReference currentDeliveringRoundRef;
+    private DatabaseReference roundsRef;
 
     private boolean isMoving = false;
     private String lastCommand = "";
@@ -76,6 +78,8 @@ public class MainActivity extends AppCompatActivity implements
         ordersRef = db.getReference("orders");
         activeOrderIdRef = db.getReference("active_order_id");
         robotStateRef = db.getReference("robot_state");
+        currentDeliveringRoundRef = db.getReference("current_delivering_round");
+        roundsRef = db.getReference("rounds");
 
         locRef.addValueEventListener(new ValueEventListener() {
             @Override
@@ -176,7 +180,7 @@ public class MainActivity extends AppCompatActivity implements
             txtWaiting.setText(R.string.subtitle_waiting_pantry);
             txtWaiting.setVisibility(View.VISIBLE);
             robot.cancelAllTtsRequests();
-            robot.speak(TtsRequest.create("Arrived at pantry. Waiting for staff.", false));
+            robot.speak(TtsRequest.create("Arrived at pantry. Waiting for staff to load items.", false));
             hideGamingOk();
             locRef.setValue("none");
             return;
@@ -234,31 +238,44 @@ public class MainActivity extends AppCompatActivity implements
         robot.cancelAllTtsRequests();
         robot.speak(TtsRequest.create(getString(R.string.tts_gaming_goodbye), false));
 
-        // Mark the active order complete only after Firebase confirms writes, then read orders/ (avoids stale snapshot).
-        activeOrderIdRef.addListenerForSingleValueEvent(new ValueEventListener() {
+        currentDeliveringRoundRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snap) {
-                String orderId = snap.getValue(String.class);
-                String oid = orderId == null ? "" : orderId.trim();
-                if (oid.isEmpty()) {
+                String roundId = snap.getValue(String.class);
+                String rid = roundId == null ? "" : roundId.trim();
+                if (rid.isEmpty()) {
                     schedulePostGoodbyeOrdersRead();
                     return;
                 }
-                Map<String, Object> updates = new HashMap<>();
-                updates.put("status", "complete");
-                updates.put("completedAt", ServerValue.TIMESTAMP);
-                ordersRef.child(oid).updateChildren(updates, (error, ref) -> {
-                    if (error != null) {
-                        Log.e("Nav", "Mark order complete failed: " + error.getMessage());
-                        schedulePostGoodbyeOrdersRead();
-                        return;
-                    }
-                    activeOrderIdRef.setValue("", (e, r) -> {
-                        if (e != null) {
-                            Log.e("Nav", "Clear active_order_id failed: " + e.getMessage());
+                
+                roundsRef.child(rid).child("orderIds").addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot orderIdsSnap) {
+                        Map<String, Object> updates = new HashMap<>();
+                        if (orderIdsSnap.exists()) {
+                            for (DataSnapshot idSnap : orderIdsSnap.getChildren()) {
+                                String oId = idSnap.getKey();
+                                updates.put("orders/" + oId + "/status", "complete");
+                                updates.put("orders/" + oId + "/completedAt", ServerValue.TIMESTAMP);
+                            }
                         }
+                        
+                        updates.put("rounds/" + rid + "/status", "done");
+                        updates.put("current_delivering_round", "");
+                        updates.put("active_order_id", "");
+                        
+                        FirebaseDatabase.getInstance().getReference().updateChildren(updates, (error, ref) -> {
+                            if (error != null) {
+                                Log.e("Nav", "Bulk round complete failed: " + error.getMessage());
+                            }
+                            schedulePostGoodbyeOrdersRead();
+                        });
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
                         schedulePostGoodbyeOrdersRead();
-                    });
+                    }
                 });
             }
 

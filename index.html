@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Temi Butler — Order</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <style>
+  <style>
     :root {
       --bg-deep: #0f172a;
       --card: rgba(30, 41, 59, 0.85);
@@ -52,37 +52,20 @@
       font-size: 3.5rem;
       overflow: hidden;
     }
-    .item-picture img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
+    .item-picture img { width: 100%; height: 100%; object-fit: cover; }
     .qty-btn {
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
-      font-weight: 700;
-      font-size: 1.25rem;
-      border: none;
+      width: 40px; height: 40px; border-radius: 10px;
+      font-weight: 700; font-size: 1.25rem; border: none;
     }
-    .qty-btn:disabled {
-      opacity: 0.35;
-      cursor: not-allowed;
-    }
+    .qty-btn:disabled { opacity: 0.35; cursor: not-allowed; }
     .qty-minus { background: #334155; color: #fff; }
     .qty-plus { background: linear-gradient(135deg, #0ea5e9, #8b5cf6); color: #fff; }
     .section-label {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--text-muted);
-      margin-bottom: 0.75rem;
+      font-size: 0.75rem; text-transform: uppercase;
+      letter-spacing: 0.12em; color: var(--text-muted); margin-bottom: 0.75rem;
     }
     .submit-bar {
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      position: fixed; left: 0; right: 0; bottom: 0;
       padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
       background: rgba(15, 23, 42, 0.92);
       backdrop-filter: blur(12px);
@@ -91,88 +74,106 @@
     }
     .btn-submit {
       background: linear-gradient(135deg, #0ea5e9, #7c3aed);
-      border: none;
-      font-weight: 700;
-      padding: 14px 24px;
-      border-radius: 14px;
+      border: none; font-weight: 700; padding: 14px 24px; border-radius: 14px;
     }
-    .btn-submit:disabled {
-      opacity: 0.5;
-    }
-    .spinner-wrap {
-      display: inline-flex;
-      align-items: center;
-      gap: 12px;
-    }
+    .btn-submit:disabled { opacity: 0.5; }
     .state-overlay {
-      position: fixed;
-      inset: 0;
+      position: fixed; inset: 0;
       background: rgba(15, 23, 42, 0.88);
       backdrop-filter: blur(8px);
-      z-index: 200;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
+      z-index: 200; display: none;
+      align-items: center; justify-content: center; padding: 24px;
     }
     .state-overlay.active { display: flex; }
     .state-card {
-      background: var(--card);
-      border-radius: 20px;
-      padding: 2rem;
-      max-width: 420px;
-      text-align: center;
+      background: var(--card); border-radius: 20px; padding: 2rem;
+      max-width: 420px; text-align: center;
       border: 1px solid rgba(148, 163, 184, 0.2);
-    }
-    .success-icon {
-      width: 88px;
-      height: 88px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #22c55e, #16a34a);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 1rem;
-      font-size: 2.75rem;
-      color: #fff;
-    }
-    .tap-hint {
-      font-size: 0.85rem;
-      color: var(--text-muted);
     }
     .stock-badge { font-size: 0.7rem; color: var(--text-muted); }
     .out-stock { color: #f87171; font-weight: 600; font-size: 0.8rem; }
-    .order-row {
-      background: var(--card);
-      border: 1px solid rgba(148, 163, 184, 0.2);
-      border-radius: 12px;
-      padding: 0.75rem 1rem;
-      font-size: 0.9rem;
+    #editOrderBanner {
+      background: rgba(234, 179, 8, 0.15) !important;
+      border-color: rgba(234, 179, 8, 0.4) !important;
+      color: #fef3c7 !important;
     }
-    .order-row.accepted { border-color: rgba(34, 197, 94, 0.45); }
-    .order-row.cancelled { opacity: 0.75; border-color: rgba(248, 113, 113, 0.35); }
-    #editOrderBanner { background: rgba(234, 179, 8, 0.15) !important; border-color: rgba(234, 179, 8, 0.4) !important; color: #fef3c7 !important; }
-    /* In-app message (replaces window.alert for on-brand UX) */
-    #appDialog {
-      z-index: 400;
-      cursor: pointer;
-    }
+    #appDialog { z-index: 400; cursor: pointer; }
     #appDialog .app-dialog-card {
-      cursor: default;
-      max-width: min(420px, calc(100vw - 32px));
-      text-align: left;
-      border: 1px solid rgba(248, 113, 113, 0.35);
+      cursor: default; max-width: min(420px, calc(100vw - 32px));
+      text-align: left; border: 1px solid rgba(248, 113, 113, 0.35);
       box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
     }
     #appDialog.app-dialog--info .app-dialog-card {
       border-color: rgba(148, 163, 184, 0.25);
     }
-    #appDialogBody {
-      color: #e2e8f0;
-      line-height: 1.45;
-      font-size: 0.95rem;
+    #appDialogBody { color: #e2e8f0; line-height: 1.45; font-size: 0.95rem; }
+
+    /* Status bar cards */
+    .status-card {
+      border-radius: 14px; padding: 14px 16px; margin-bottom: 8px;
+      border: 1.5px solid; background: rgba(15,23,42,0.6);
+      transition: border-color 0.3s;
     }
-    </style>
+    .status-card.state-open { border-color: rgba(29,158,117,0.5); }
+    .status-card.state-queued { border-color: rgba(83,74,183,0.5); }
+    .status-card.state-moving { border-color: rgba(56,139,221,0.5); }
+    .status-card.state-arrived {
+      border-color: rgba(29,158,117,0.9);
+      animation: pulseGreen 2s infinite;
+    }
+    .status-card.state-pantry { border-color: rgba(56,139,221,0.5); }
+    @keyframes pulseGreen {
+      0%,100% { box-shadow: 0 0 0 0 rgba(29,158,117,0.4); }
+      50% { box-shadow: 0 0 0 8px rgba(29,158,117,0); }
+    }
+    .status-order-label {
+      font-size: 0.7rem; color: #64748b;
+      text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;
+    }
+    .status-title { font-size: 1rem; font-weight: 700; color: #f1f5f9; }
+    .status-subtitle { font-size: 0.82rem; color: #94a3b8; margin-top: 2px; }
+    .status-items {
+      font-size: 0.8rem; color: #64748b;
+      margin-top: 8px; padding-top: 8px;
+      border-top: 1px solid rgba(148,163,184,0.1);
+    }
+
+    /* History section */
+    .hist-card {
+      background: rgba(15,23,42,0.35);
+      border: 1px solid rgba(148,163,184,0.15);
+      border-radius: 12px; padding: 10px 14px; margin-bottom: 8px;
+    }
+    .hist-badge-done {
+      font-size:0.7rem; padding:2px 8px; border-radius:99px;
+      background:#0f6e56; color:#9fe1cb; font-weight:600;
+      display:inline-block; margin-bottom:4px;
+    }
+    .hist-badge-cancel {
+      font-size:0.7rem; padding:2px 8px; border-radius:99px;
+      background:rgba(163,45,45,0.3); color:#f09595; font-weight:600;
+      display:inline-block; margin-bottom:4px;
+    }
+    .hist-date-group {
+      font-size:0.72rem; color:#475569; text-transform:uppercase;
+      letter-spacing:0.08em; margin:10px 0 6px;
+    }
+    .reorder-link {
+      font-size:0.8rem; color:#38bdf8; cursor:pointer;
+      margin-top:6px; display:inline-block;
+      background:none; border:none; padding:0;
+    }
+    .fav-card {
+      background:rgba(15,23,42,0.35);
+      border:1px solid rgba(148,163,184,0.15);
+      border-radius:12px; padding:12px 14px; margin-bottom:8px;
+    }
+    .history-toggle-row {
+      cursor:pointer; padding:14px 0;
+      display:flex; justify-content:space-between; align-items:center;
+      border-top:1px solid rgba(148,163,184,0.15);
+    }
+  </style>
 </head>
 <body>
   <div class="container py-4 py-md-5">
@@ -183,22 +184,20 @@
 
     <div id="firebaseError" class="alert alert-danger d-none" role="alert"></div>
 
-    <div id="introBanner" class="alert border mb-3 d-none" style="background: rgba(56, 189, 248, 0.12); border-color: rgba(56, 189, 248, 0.35) !important; color: #e2e8f0;">
+    <div id="introBanner" class="alert border mb-3 d-none"
+      style="background:rgba(56,189,248,0.12);border-color:rgba(56,189,248,0.35)!important;color:#e2e8f0;">
       <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
         <p class="mb-0 small flex-grow-1" id="introBannerText"></p>
-        <button type="button" class="btn btn-sm btn-outline-info" id="btnReplayIntro" title="Replay voice">🔊 Play again</button>
+        <button type="button" class="btn btn-sm btn-outline-info" id="btnReplayIntro">🔊 Play again</button>
       </div>
       <p id="introVoiceHint" class="mb-0 mt-2 small text-info d-none" aria-live="polite"></p>
     </div>
 
+    <!-- Active order status bar -->
+    <div id="topStatusBar" class="mb-4"></div>
+
     <div id="editOrderBanner" class="alert border mb-3 d-none" role="status">
       <span id="editOrderBannerText"></span>
-    </div>
-
-    <div id="ordersPanel" class="mb-4">
-      <p class="section-label">Your orders</p>
-      <p id="ordersEmpty" class="text-secondary small mb-2">No orders yet — add items and submit.</p>
-      <div id="ordersList" class="d-flex flex-column gap-2"></div>
     </div>
 
     <p class="section-label">Beverages</p>
@@ -206,6 +205,26 @@
 
     <p class="section-label">Snacks (Living Labs rack)</p>
     <div id="rowSnacks" class="row g-3 mb-3"></div>
+
+    <!-- History section -->
+    <div id="historySection" class="mt-2 mb-5">
+      <div class="history-toggle-row" onclick="toggleHistory()">
+        <p class="section-label mb-0">
+          Past orders <span id="historyCount" style="color:#64748b;text-transform:none;letter-spacing:0"></span>
+        </p>
+        <span id="historyArrow" style="color:#64748b;font-size:0.8rem">▼</span>
+      </div>
+      <div id="historyBody" style="display:none">
+        <div class="d-flex gap-2 mb-3 mt-2">
+          <button class="btn btn-sm btn-outline-info active" id="htabRecent"
+            onclick="switchHistoryTab('recent')">Recent</button>
+          <button class="btn btn-sm btn-outline-info" id="htabReorder"
+            onclick="switchHistoryTab('reorder')">Order again</button>
+        </div>
+        <div id="historyRecent"></div>
+        <div id="historyReorder" style="display:none"></div>
+      </div>
+    </div>
   </div>
 
   <div class="submit-bar">
@@ -214,418 +233,178 @@
         <div class="small text-secondary">
           <span id="cartSummary">No items selected</span>
         </div>
-        <div id="orderFooterStatus" class="small d-none" style="margin-top:4px;">
-          <span class="spinner-border spinner-border-sm text-info align-middle me-2" role="status" aria-hidden="true"></span>
-          <span id="orderFooterStatusText" class="text-secondary">Waiting for admin…</span>
-        </div>
       </div>
       <button type="button" class="btn btn-submit text-white" id="btnSubmit" disabled>Submit order</button>
     </div>
   </div>
 
-  <!-- Waiting overlay removed: we keep browsing like a food app; status is shown in the footer. -->
-
-  <!-- Tap to enable voice: browsers block speech until there is a user gesture (no autoplay on load). -->
-  <div id="overlayTap" class="state-overlay active" style="z-index: 150;">
+  <div id="overlayTap" class="state-overlay active" style="z-index:150;">
     <div class="state-card">
       <p class="mb-3"><strong>Tap anywhere</strong> to hear the welcome message. Audio cannot start automatically after you scan the QR code — this is a browser security rule.</p>
-      <!-- <p class="tap-hint mb-0">No sound? Use 🔊 Play again below after you close this.</p> -->
     </div>
-        </div>
+  </div>
 
   <div id="appDialog" class="state-overlay app-dialog--info" role="dialog" aria-modal="true" aria-labelledby="appDialogTitle">
     <div class="state-card app-dialog-card" id="appDialogCard">
-      <h2 id="appDialogTitle" class="h6 mb-2" style="letter-spacing: 0.06em; color: #f1f5f9;">Notice</h2>
+      <h2 id="appDialogTitle" class="h6 mb-2" style="letter-spacing:0.06em;color:#f1f5f9;">Notice</h2>
       <p id="appDialogBody" class="mb-4"></p>
       <button type="button" class="btn btn-submit text-white w-100" id="appDialogOk">OK</button>
     </div>
-    </div>
+  </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
     import {
-      getDatabase,
-      ref,
-      onValue,
-      push,
-      set,
-      get,
-      update,
-      runTransaction,
-      serverTimestamp,
+      getDatabase, ref, onValue, push, set, get, update, runTransaction, serverTimestamp,
     } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
 
-    /** Set once Firebase initializes; used by order actions. */
     let db = null;
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyCTOREQwSXlET_OH764k5bbwo4hn_GtvHA",
-            authDomain: "temi-beverage-delivery.firebaseapp.com",
-            databaseURL: "https://temi-beverage-delivery-default-rtdb.firebaseio.com",
+    const firebaseConfig = {
+      apiKey: "AIzaSyCTOREQwSXlET_OH764k5bbwo4hn_GtvHA",
+      authDomain: "temi-beverage-delivery.firebaseapp.com",
+      databaseURL: "https://temi-beverage-delivery-default-rtdb.firebaseio.com",
       projectId: "temi-beverage-delivery",
     };
 
-    const INTRO_TEXT =
-      "Hi ! welcome to the Temi Butler Service. Please choose the beverages and snacks you would like to order";
-
+    const INTRO_TEXT = "Hi ! welcome to the Temi Butler Service. Please choose the beverages and snacks you would like to order";
     const el = (id) => document.getElementById(id);
 
-    /**
-     * In-app modal instead of `window.alert` (matches the dark theme; no “site says” browser chrome).
-     */
+    // ── App dialog ──
     function showAppDialog(message, opts = {}) {
       const overlay = el("appDialog");
       const titleEl = el("appDialogTitle");
       const bodyEl = el("appDialogBody");
       const okBtn = el("appDialogOk");
-      if (!overlay || !titleEl || !bodyEl || !okBtn) {
-        window.alert(message);
-        return;
-      }
+      if (!overlay || !titleEl || !bodyEl || !okBtn) { window.alert(message); return; }
       const variant = opts.variant === "error" ? "error" : "info";
       titleEl.textContent = opts.title || "Notice";
       bodyEl.textContent = message || "";
       overlay.classList.toggle("app-dialog--info", variant === "info");
       overlay.classList.add("active");
-      try {
-        okBtn.focus();
-      } catch {
-        /* ignore */
-      }
-
-      const close = () => {
-        overlay.classList.remove("active");
-        overlay.onclick = null;
-        okBtn.onclick = null;
-      };
+      try { okBtn.focus(); } catch {}
+      const close = () => { overlay.classList.remove("active"); overlay.onclick = null; okBtn.onclick = null; };
       okBtn.onclick = () => close();
-      overlay.onclick = (ev) => {
-        if (ev.target === overlay) close();
-      };
+      overlay.onclick = (ev) => { if (ev.target === overlay) close(); };
     }
 
-    // ---- Voice system (simpler & more reliable on mobile) ----
-
+    // ── Voice system ──
     function showIntroTextBanner() {
-      const banner = el("introBanner");
-      const textEl = el("introBannerText");
-      if (banner && textEl) {
-        textEl.textContent = INTRO_TEXT;
-        banner.classList.remove("d-none");
-      }
+      const banner = el("introBanner"); const textEl = el("introBannerText");
+      if (banner && textEl) { textEl.textContent = INTRO_TEXT; banner.classList.remove("d-none"); }
     }
-
     function setIntroVoiceHint(text) {
-      const hint = el("introVoiceHint");
-      if (!hint) return;
-      if (!text) {
-        hint.classList.add("d-none");
-        hint.textContent = "";
-        return;
-      }
-      hint.textContent = text;
-      hint.classList.remove("d-none");
+      const hint = el("introVoiceHint"); if (!hint) return;
+      if (!text) { hint.classList.add("d-none"); hint.textContent = ""; return; }
+      hint.textContent = text; hint.classList.remove("d-none");
     }
-
     const VOICE_DEBUG = new URLSearchParams(location.search).has("debugVoice");
     function debugVoice(label, extra = {}) {
       if (!VOICE_DEBUG) return;
-      try {
-        const synth = window.speechSynthesis;
-        console.debug("[voice]", label, {
-          hasSynth: !!synth,
-          speaking: !!synth?.speaking,
-          pending: !!synth?.pending,
-          paused: !!synth?.paused,
-          voices: synth?.getVoices ? synth.getVoices().length : 0,
-          ...extra,
-        });
-      } catch {
-        /* ignore */
-      }
+      try { const synth = window.speechSynthesis; console.debug("[voice]", label, { hasSynth: !!synth, ...extra }); } catch {}
     }
-
     function pickVoice(voices) {
       if (!voices || !voices.length) return null;
       const norm = (s) => (s || "").toLowerCase();
-      const exact = [
-        "Samantha",
-        "Google US English",
-        "Microsoft Zira - English (United States)",
-        "Microsoft Aria Online (Natural) - English (United States)",
-        "Karen",
-        "Moira",
-        "Tessa",
-        "Victoria",
-      ];
-      for (const name of exact) {
-        const v = voices.find((vv) => norm(vv.name) === norm(name));
-        if (v) return v;
-      }
-      const maleWords = [
-        "male",
-        "daniel",
-        "fred",
-        "albert",
-        "arthur",
-        "thomas",
-        "david",
-        "oliver",
-        "james",
-        "mark",
-      ];
+      const exact = ["Samantha","Google US English","Microsoft Zira - English (United States)","Microsoft Aria Online (Natural) - English (United States)","Karen","Moira","Tessa","Victoria"];
+      for (const name of exact) { const v = voices.find((vv) => norm(vv.name) === norm(name)); if (v) return v; }
+      const maleWords = ["male","daniel","fred","albert","arthur","thomas","david","oliver","james","mark"];
       const isMale = (v) => maleWords.some((w) => norm(v.name).includes(w));
       const en = voices.filter((v) => v.lang && norm(v.lang).startsWith("en"));
       const enUs = en.filter((v) => norm(v.lang).startsWith("en-us"));
-      return (
-        enUs.find((v) => !isMale(v)) ||
-        en.find((v) => !isMale(v)) ||
-        enUs[0] ||
-        en[0] ||
-        voices[0]
-      );
+      return enUs.find((v) => !isMale(v)) || en.find((v) => !isMale(v)) || enUs[0] || en[0] || voices[0];
     }
-
-    let welcomeSpoken = false;
-    let voiceAttemptSeq = 0;
-    let introAutoRetriedAttemptId = 0;
-
+    let welcomeSpoken = false; let voiceAttemptSeq = 0; let introAutoRetriedAttemptId = 0;
     function startResumeHack(synth) {
       const end = Date.now() + 25000;
       const id = setInterval(() => {
-        try {
-          if (Date.now() > end || (!synth.speaking && !synth.pending)) {
-            clearInterval(id);
-            return;
-          }
-          if (typeof synth.resume === "function") synth.resume();
-        } catch {
-          clearInterval(id);
-        }
+        try { if (Date.now() > end || (!synth.speaking && !synth.pending)) { clearInterval(id); return; } if (typeof synth.resume === "function") synth.resume(); } catch { clearInterval(id); }
       }, 100);
       return () => clearInterval(id);
     }
-
     function doSpeak(forceReplay, voiceOverride) {
-      const synth = window.speechSynthesis;
-      if (!synth) { showIntroTextBanner(); return; }
+      const synth = window.speechSynthesis; if (!synth) { showIntroTextBanner(); return; }
       if (!forceReplay && welcomeSpoken) return;
-
-      debugVoice("doSpeak called", { forceReplay, voiceOverride: !!voiceOverride });
-
       const u = new SpeechSynthesisUtterance(INTRO_TEXT);
-      u.lang = "en-US";
-      u.rate = 0.95;
-      u.volume = 1;
-      u.pitch = 1.08;
-
+      u.lang = "en-US"; u.rate = 0.95; u.volume = 1; u.pitch = 1.08;
       const voices = synth.getVoices();
       const picked = voiceOverride || (voices.length ? pickVoice(voices) : null);
       if (picked) u.voice = picked;
-
-      const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent);
-      let stopHack = null;
-      const attemptId = ++voiceAttemptSeq;
-
-      u.onstart = () => {
-        if (!forceReplay) welcomeSpoken = true;
-        if (!isIOS) stopHack = startResumeHack(synth);
-        setIntroVoiceHint("");
-        debugVoice("utterance start");
-      };
-
-      u.onend = () => {
-        if (stopHack) stopHack();
-        setIntroVoiceHint("");
-        debugVoice("utterance end");
-      };
-
+      let stopHack = null; const attemptId = ++voiceAttemptSeq;
+      u.onstart = () => { if (!forceReplay) welcomeSpoken = true; stopHack = startResumeHack(synth); setIntroVoiceHint(""); };
+      u.onend = () => { if (stopHack) stopHack(); setIntroVoiceHint(""); };
       u.onerror = (ev) => {
         if (stopHack) stopHack();
-        const code = ev?.error || "";
-        if (code === "canceled" || code === "interrupted") return;
+        const code = ev?.error || ""; if (code === "canceled" || code === "interrupted") return;
         showIntroTextBanner();
-        debugVoice("utterance error", { code });
-
         if (!forceReplay && introAutoRetriedAttemptId !== attemptId) {
-          introAutoRetriedAttemptId = attemptId;
-          setIntroVoiceHint("Retrying audio…");
-          setTimeout(() => {
-            if (attemptId !== voiceAttemptSeq || welcomeSpoken) return;
-            try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch {}
-            speakIntro(true);
-          }, 180);
+          introAutoRetriedAttemptId = attemptId; setIntroVoiceHint("Retrying audio…");
+          setTimeout(() => { if (attemptId !== voiceAttemptSeq || welcomeSpoken) return; try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch {} speakIntro(true); }, 180);
           return;
         }
-
-        setTimeout(() => {
-          if (attemptId !== voiceAttemptSeq || welcomeSpoken) return;
-          if (!synth.speaking && !synth.pending) {
-            setIntroVoiceHint("No sound? Turn up MEDIA volume and tap 🔊 Play again. If still silent: Brave Shields ↓ for this site, and ensure your phone has Text-to-Speech enabled.");
-          }
-        }, 1500);
+        setTimeout(() => { if (attemptId !== voiceAttemptSeq || welcomeSpoken) return; if (!synth.speaking && !synth.pending) { setIntroVoiceHint("No sound? Turn up MEDIA volume and tap 🔊 Play again."); } }, 1500);
       };
-
       synth.speak(u);
-      debugVoice("synth.speak queued");
     }
-
-    // One-time voiceschanged: prime voices early so the first tap can pick the preferred voice.
-    try {
-      if (window.speechSynthesis) {
-        window.speechSynthesis.getVoices();
-        window.speechSynthesis.addEventListener("voiceschanged", () => {}, {
-          once: true,
-        });
-      }
-    } catch {
-      /* ignore */
-    }
-
+    try { if (window.speechSynthesis) { window.speechSynthesis.getVoices(); window.speechSynthesis.addEventListener("voiceschanged", () => {}, { once: true }); } } catch {}
     function speakIntro(forceReplay = false) {
-      showIntroTextBanner();
-      setIntroVoiceHint("");
-
-      const synth = window.speechSynthesis;
-      if (!synth) {
-        setIntroVoiceHint("Voice not supported in this browser.");
-        return;
-      }
-
-      // KEY: Always speak immediately inside the gesture, even if voices aren't loaded yet.
-      // On Android Chrome/Brave, waiting for voiceschanged can lose the gesture window.
+      showIntroTextBanner(); setIntroVoiceHint("");
+      const synth = window.speechSynthesis; if (!synth) { setIntroVoiceHint("Voice not supported in this browser."); return; }
       doSpeak(forceReplay, null);
-
-      // Prime voices for better replay quality later.
-      try {
-        if (!synth.getVoices().length) {
-          synth.addEventListener("voiceschanged", () => {}, { once: true });
-        }
-      } catch {
-        /* ignore */
-      }
+      try { if (!synth.getVoices().length) { synth.addEventListener("voiceschanged", () => {}, { once: true }); } } catch {}
     }
 
+    // ── Default inventory ──
     const DEFAULT_INVENTORY = {
-      coke_can: {
-        name: "Coke Can",
-        emoji: "🥤",
-        imageUrl: "",
-        category: "beverage",
-        quantity: 10,
-      },
-      water: {
-        name: "Water",
-        emoji: "💧",
-        imageUrl: "",
-        category: "beverage",
-        quantity: 10,
-      },
-      green_tea: {
-        name: "Green Tea",
-        emoji: "🍵",
-        imageUrl: "",
-        category: "beverage",
-        quantity: 8,
-      },
-      juice: {
-        name: "Juice",
-        emoji: "🧃",
-        imageUrl: "",
-        category: "beverage",
-        quantity: 6,
-      },
-      coffee: {
-        name: "Coffee",
-        emoji: "☕",
-        imageUrl: "",
-        category: "beverage",
-        quantity: 5,
-      },
-      chips: {
-        name: "Chips (Living Labs rack)",
-        emoji: "🍟",
-        imageUrl: "",
-        category: "snack",
-        quantity: 8,
-      },
-      cookies: {
-        name: "Cookies (Living Labs rack)",
-        emoji: "🍪",
-        imageUrl: "",
-        category: "snack",
-        quantity: 10,
-      },
-      chocolate: {
-        name: "Chocolate",
-        emoji: "🍫",
-        imageUrl: "",
-        category: "snack",
-        quantity: 7,
-      },
-      nuts_living_labs: {
-        name: "Mixed Nuts (Living Labs rack)",
-        emoji: "🥜",
-        imageUrl: "",
-        category: "snack",
-        quantity: 6,
-      },
-      granola_bar: {
-        name: "Granola Bar (Living Labs rack)",
-        emoji: "🌾",
-        imageUrl: "",
-        category: "snack",
-        quantity: 9,
-      },
+      coke_can: { name: "Coke Can", emoji: "🥤", imageUrl: "", category: "beverage", quantity: 10 },
+      water: { name: "Water", emoji: "💧", imageUrl: "", category: "beverage", quantity: 10 },
+      green_tea: { name: "Green Tea", emoji: "🍵", imageUrl: "", category: "beverage", quantity: 8 },
+      juice: { name: "Juice", emoji: "🧃", imageUrl: "", category: "beverage", quantity: 6 },
+      coffee: { name: "Coffee", emoji: "☕", imageUrl: "", category: "beverage", quantity: 5 },
+      chips: { name: "Chips (Living Labs rack)", emoji: "🍟", imageUrl: "", category: "snack", quantity: 8 },
+      cookies: { name: "Cookies (Living Labs rack)", emoji: "🍪", imageUrl: "", category: "snack", quantity: 10 },
+      chocolate: { name: "Chocolate", emoji: "🍫", imageUrl: "", category: "snack", quantity: 7 },
+      nuts_living_labs: { name: "Mixed Nuts (Living Labs rack)", emoji: "🥜", imageUrl: "", category: "snack", quantity: 6 },
+      granola_bar: { name: "Granola Bar (Living Labs rack)", emoji: "🌾", imageUrl: "", category: "snack", quantity: 9 },
     };
 
-    /** Filled from Firebase; empty until first snapshot (or fallback if Firebase unavailable). */
+    // ── State ──
     let inventory = {};
     const cart = {};
-    /** @type {string | null} */
     let editingOrderId = null;
-    /** Line items from the order when Edit started — used so + caps include stock already reserved for this order. */
     let editBaselineItems = null;
     let ordersUnsubscribe = null;
-    /** Last snapshot of this user’s orders (so we can re-render right after entering edit mode). */
-    let lastOrdersRows = [];
+    let currentDeliveringRound = null;
+    let robotState = "idle";
+    let allRounds = {};
+    let myOrders = [];
 
+    // ── localStorage ──
     const LS_SESSION = "temi_session_id";
     const LS_ORDER_QUEUE = "temi_order_queue";
+    const LS_HISTORY = "temi_order_history";
 
     function getOrCreateSessionId() {
       let s = localStorage.getItem(LS_SESSION);
-      if (!s) {
-        s =
-          typeof crypto !== "undefined" && crypto.randomUUID
-            ? crypto.randomUUID()
-            : "s-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10);
-        localStorage.setItem(LS_SESSION, s);
-      }
+      if (!s) { s = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "s-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10); localStorage.setItem(LS_SESSION, s); }
       return s;
     }
-
     const sessionId = getOrCreateSessionId();
 
-    function loadOrderQueue() {
-      try {
-        const raw = localStorage.getItem(LS_ORDER_QUEUE);
-        return raw ? JSON.parse(raw) : [];
-      } catch {
-        return [];
-      }
-    }
+    function loadOrderQueue() { try { const raw = localStorage.getItem(LS_ORDER_QUEUE); return raw ? JSON.parse(raw) : []; } catch { return []; } }
+    function saveOrderQueue(ids) { localStorage.setItem(LS_ORDER_QUEUE, JSON.stringify(ids)); }
+    function addOrderToQueue(orderId) { const q = loadOrderQueue(); if (!q.includes(orderId)) { q.push(orderId); saveOrderQueue(q); } }
 
-    function saveOrderQueue(ids) {
-      localStorage.setItem(LS_ORDER_QUEUE, JSON.stringify(ids));
-    }
-
-    function addOrderToQueue(orderId) {
-      const q = loadOrderQueue();
-      if (!q.includes(orderId)) {
-        q.push(orderId);
-        saveOrderQueue(q);
-      }
+    function loadOrderHistory() { try { return JSON.parse(localStorage.getItem(LS_HISTORY) || "[]"); } catch { return []; } }
+    function saveOrderHistory(entries) { localStorage.setItem(LS_HISTORY, JSON.stringify(entries.slice(0, 20))); }
+    function archiveOrder(orderId, orderData, status) {
+      const history = loadOrderHistory();
+      if (history.find(o => o.id === orderId)) return;
+      const itemNames = {};
+      Object.keys(orderData.items || {}).forEach(sku => { itemNames[sku] = inventory[sku]?.name || sku; });
+      history.unshift({ id: orderId, items: orderData.items || {}, itemNames, status, completedAt: Date.now() });
+      saveOrderHistory(history);
+      renderHistorySection();
     }
 
     function isMyOrder(orderId, data) {
@@ -634,39 +413,8 @@
       return loadOrderQueue().includes(orderId);
     }
 
-    function formatOrderShortId(id) {
-      if (!id) return "";
-      return id.length > 8 ? "…" + id.slice(-6) : id;
-    }
+    function showFirebaseError(msg) { const box = el("firebaseError"); box.textContent = msg; box.classList.remove("d-none"); }
 
-    function formatOrderItems(items) {
-      if (!items || typeof items !== "object") return "—";
-      return Object.keys(items)
-        .filter((k) => items[k] > 0)
-        .map((k) => {
-          const name = inventory[k]?.name || k;
-          return `${name} ×${items[k]}`;
-        })
-        .join(", ");
-    }
-
-    function statusLabel(st) {
-      const s = (st || "").toLowerCase();
-      if (s === "pending" || s === "") return { text: "Queued — waiting for admin", cls: "text-warning" };
-      if (s === "ongoing" || s === "accepted" || s === "complete")
-        return { text: "Accepted — on the way", cls: "text-success" };
-      if (s === "cancelled" || s === "canceled")
-        return { text: "Cancelled", cls: "text-danger" };
-      return { text: st || "Unknown", cls: "text-secondary" };
-    }
-
-    function showFirebaseError(msg) {
-      const box = el("firebaseError");
-      box.textContent = msg;
-      box.classList.remove("d-none");
-    }
-
-    /** Max quantity allowed in cart for this SKU (global stock + this order’s baseline while editing). */
     function maxCartQtyForSku(sku) {
       const globalQ = Math.max(0, Number(inventory[sku]?.quantity) || 0);
       if (editingOrderId && editBaselineItems) {
@@ -676,660 +424,596 @@
       return globalQ;
     }
 
+    // ── Catalog ──
     function renderCatalog() {
-      const bev = el("rowBeverages");
-      const snk = el("rowSnacks");
-      bev.innerHTML = "";
-      snk.innerHTML = "";
-
+      const bev = el("rowBeverages"); const snk = el("rowSnacks");
+      bev.innerHTML = ""; snk.innerHTML = "";
       Object.keys(inventory).forEach((sku) => {
         const item = inventory[sku];
         const row = item.category === "snack" ? snk : bev;
-        const globalQ = Math.max(0, Number(item.quantity) || 0);
         const maxQ = maxCartQtyForSku(sku);
         const qty = cart[sku] || 0;
         const out = maxQ === 0;
-
-        const stockLabel = out
-          ? '<span class="out-stock">Out of Stock</span>'
-          : editingOrderId && editBaselineItems
-            ? `<span title="Unallocated in pantry plus what this queued order already holds.">Up to ${maxQ} for this order${globalQ < maxQ ? ` <span class="text-muted">(${globalQ} free)</span>` : ""}</span>`
-            : `In stock: ${globalQ}`;
-
+        const stockLabel = out ? '<span class="out-stock">Out of Stock</span>' : `In stock: ${Math.max(0, Number(item.quantity) || 0)}`;
         const col = document.createElement("div");
         col.className = "col-6 col-md-4 col-lg-3";
-        const imgPart = item.imageUrl
-          ? `<img src="${item.imageUrl}" alt="" loading="lazy" />`
-          : `<span aria-hidden="true">${item.emoji || "📦"}</span>`;
-
-        col.innerHTML = `
-          <div class="item-card">
-            <div class="item-picture">${imgPart}</div>
-            <div class="mt-2 fw-semibold text-center small">${item.name}</div>
-            <div class="stock-badge text-center">${stockLabel}</div>
-            <div class="d-flex align-items-center justify-content-center gap-2 mt-2">
-              <button type="button" class="qty-btn qty-minus" data-sku="${sku}" ${qty <= 0 ? "disabled" : ""}>−</button>
-              <span class="fw-bold" style="min-width:2rem; text-align:center" id="qty-${sku}">${qty}</span>
-              <button type="button" class="qty-btn qty-plus" data-sku="${sku}" ${out || qty >= maxQ ? "disabled" : ""}>+</button>
-            </div>
-          </div>`;
+        const imgPart = item.imageUrl ? `<img src="${item.imageUrl}" alt="" loading="lazy" />` : `<span aria-hidden="true">${item.emoji || "📦"}</span>`;
+        col.innerHTML = `<div class="item-card"><div class="item-picture">${imgPart}</div><div class="mt-2 fw-semibold text-center small">${item.name}</div><div class="stock-badge text-center">${stockLabel}</div><div class="d-flex align-items-center justify-content-center gap-2 mt-2"><button type="button" class="qty-btn qty-minus" data-sku="${sku}" ${qty <= 0 ? "disabled" : ""}>−</button><span class="fw-bold" style="min-width:2rem;text-align:center" id="qty-${sku}">${qty}</span><button type="button" class="qty-btn qty-plus" data-sku="${sku}" ${out || qty >= maxQ ? "disabled" : ""}>+</button></div></div>`;
         row.appendChild(col);
       });
-
-      bev.querySelectorAll(".qty-minus").forEach((b) =>
-        b.addEventListener("click", () => adjustCart(b.dataset.sku, -1))
-      );
-      bev.querySelectorAll(".qty-plus").forEach((b) =>
-        b.addEventListener("click", () => adjustCart(b.dataset.sku, 1))
-      );
-      snk.querySelectorAll(".qty-minus").forEach((b) =>
-        b.addEventListener("click", () => adjustCart(b.dataset.sku, -1))
-      );
-      snk.querySelectorAll(".qty-plus").forEach((b) =>
-        b.addEventListener("click", () => adjustCart(b.dataset.sku, 1))
-      );
+      bev.querySelectorAll(".qty-minus").forEach((b) => b.addEventListener("click", () => adjustCart(b.dataset.sku, -1)));
+      bev.querySelectorAll(".qty-plus").forEach((b) => b.addEventListener("click", () => adjustCart(b.dataset.sku, 1)));
+      snk.querySelectorAll(".qty-minus").forEach((b) => b.addEventListener("click", () => adjustCart(b.dataset.sku, -1)));
+      snk.querySelectorAll(".qty-plus").forEach((b) => b.addEventListener("click", () => adjustCart(b.dataset.sku, 1)));
     }
 
     function adjustCart(sku, delta) {
-      const maxQ = maxCartQtyForSku(sku);
-      if (maxQ === 0) return;
+      const maxQ = maxCartQtyForSku(sku); if (maxQ === 0) return;
       const next = Math.max(0, Math.min(maxQ, (cart[sku] || 0) + delta));
-      if (next === 0) delete cart[sku];
-      else cart[sku] = next;
-      updateCartUi();
-      renderCatalog();
+      if (next === 0) delete cart[sku]; else cart[sku] = next;
+      updateCartUi(); renderCatalog();
     }
 
     function updateCartUi() {
       const entries = Object.keys(cart).filter((k) => cart[k] > 0);
       const sum = entries.reduce((a, k) => a + cart[k], 0);
-      el("cartSummary").textContent =
-        sum === 0
-          ? "No items selected"
-          : `${sum} item${sum === 1 ? "" : "s"} in cart`;
+      el("cartSummary").textContent = sum === 0 ? "No items selected" : `${sum} item${sum === 1 ? "" : "s"} in cart`;
       const btn = el("btnSubmit");
-      if (editingOrderId) {
-        btn.disabled = sum === 0;
-        btn.textContent = "Save changes";
-      } else {
-        btn.disabled = sum === 0;
-        btn.textContent = "Submit order";
-      }
+      if (editingOrderId) { btn.disabled = sum === 0; btn.textContent = "Save changes"; }
+      else { btn.disabled = sum === 0; btn.textContent = "Submit order"; }
     }
 
-    function setFooterStatus(mode, customText) {
-      const wrap = el("orderFooterStatus");
-      const text = el("orderFooterStatusText");
-      if (!wrap || !text) return;
-
-      if (mode === "hidden") {
-        wrap.classList.add("d-none");
-        return;
-      }
-
-      wrap.classList.remove("d-none");
-
-      const spinner = wrap.querySelector(".spinner-border");
-      if (mode === "pending") {
-        if (spinner) spinner.classList.remove("d-none");
-        text.className = "text-secondary";
-        text.textContent =
-          customText || "Waiting for admin to accept queued orders…";
-      } else if (mode === "accepted") {
-        if (spinner) spinner.classList.add("d-none");
-        text.className = "text-success fw-semibold";
-        text.textContent = customText || "✓ Order(s) accepted — delivery on the way";
-      } else if (mode === "cancelled") {
-        if (spinner) spinner.classList.add("d-none");
-        text.className = "text-danger fw-semibold";
-        text.textContent = customText || "Cancelled";
-      }
+    function formatOrderItems(items) {
+      if (!items || typeof items !== "object") return "";
+      return Object.keys(items).filter((k) => items[k] > 0).map((k) => { const name = inventory[k]?.name || k; return `${name} ×${items[k]}`; }).join(", ");
     }
 
-    function hideWaiting() {
-      setFooterStatus("hidden");
-    }
+    // ── Status bar ──
+    function renderStatusBar() {
+      const topBar = el("topStatusBar"); if (!topBar) return;
+      topBar.innerHTML = "";
 
-    function updateFooterFromOrders(rows) {
-      const pending = rows.filter((o) => {
-        const s = (o.status || "pending").toLowerCase();
-        return s === "pending" || s === "";
-      });
-      const accepted = rows.filter((o) => {
-        const s = (o.status || "").toLowerCase();
-        return s === "ongoing" || s === "accepted" || s === "complete";
-      });
-      if (pending.length > 0) {
-        setFooterStatus(
-          "pending",
-          `${pending.length} order(s) in queue — waiting for admin`
-        );
-      } else if (accepted.length > 0 && rows.length > 0) {
-        setFooterStatus("accepted");
-      } else {
-        hideWaiting();
-      }
-    }
-
-    function renderOrdersPanel(rows) {
-      const list = el("ordersList");
-      const empty = el("ordersEmpty");
-      if (!list || !empty) return;
-
-      rows.sort((a, b) => String(a.id || "").localeCompare(String(b.id || "")));
-
-      if (rows.length === 0) {
-        empty.classList.remove("d-none");
-        list.innerHTML = "";
-        return;
-      }
-      empty.classList.add("d-none");
-      list.innerHTML = "";
-
-      rows.forEach((o) => {
+      const activeOrders = myOrders.filter(o => {
         const st = (o.status || "pending").toLowerCase();
-        const lbl = statusLabel(o.status);
-        const canEdit = st === "pending" || st === "";
-        const isEditingThis =
-          Boolean(editingOrderId) && String(o.id) === String(editingOrderId);
+        return !["complete","delivered","cancelled","canceled"].includes(st);
+      });
+      if (activeOrders.length === 0) return;
+
+      // Group by roundId — one card per round
+      const roundGroups = {};
+      activeOrders.forEach(o => {
+        const rId = o.roundId || "no-round";
+        if (!roundGroups[rId]) roundGroups[rId] = [];
+        roundGroups[rId].push(o);
+      });
+
+      const cards = Object.entries(roundGroups).map(([rId, groupOrders]) => {
+        const rd = rId !== "no-round" ? (allRounds[rId] || {}) : {};
+        const rStatus = (rd.status || "open").toLowerCase();
+
+        // Merge all items in this group
+        const mergedItems = {};
+        groupOrders.forEach(o => {
+          Object.entries(o.items || {}).forEach(([sku, qty]) => {
+            mergedItems[sku] = (mergedItems[sku] || 0) + Number(qty);
+          });
+        });
+        const itemsText = Object.entries(mergedItems)
+          .filter(([, q]) => q > 0)
+          .map(([sku, q]) => (inventory[sku]?.name || sku) + " ×" + q)
+          .join(", ");
+
+        // Determine state
+        let stateClass, icon, title, subtitle, priority;
+        const isDelivering = rId !== "no-round" && rId === currentDeliveringRound;
+
+        if (isDelivering && robotState === "arrived_gaming") {
+          stateClass = "state-arrived"; icon = "🎉"; priority = 4;
+          title = "Temi is here!";
+          subtitle = "Collect your order and press OK on Temi's screen";
+        } else if (isDelivering && robotState === "arrived_pantry") {
+          stateClass = "state-pantry"; icon = "🤖"; priority = 3;
+          title = "Almost there";
+          subtitle = "Loading your order onto Temi now";
+        } else if (isDelivering || rStatus === "locked" || rStatus === "delivering") {
+          stateClass = "state-moving"; icon = "🤖"; priority = 3;
+          title = "Temi is on the way!";
+          subtitle = "Head to the gaming zone now";
+        } else if (rStatus === "closed") {
+          stateClass = "state-queued"; icon = "⏳"; priority = 2;
+          title = "Your order is confirmed";
+          subtitle = "Too late to modify — Temi is collecting soon";
+        } else {
+          stateClass = "state-open"; icon = "✓"; priority = 1;
+          title = "Order received";
+          subtitle = "Temi will collect your order shortly";
+        }
+
+        const canModify = rStatus === "open";
+        return { stateClass, icon, title, subtitle, priority, itemsText, rId, canModify };
+      });
+
+      cards.sort((a, b) => b.priority - a.priority);
+      const total = cards.length;
+
+      cards.forEach((card, index) => {
         const div = document.createElement("div");
-        div.className = "order-row";
-        if (st === "ongoing" || st === "accepted" || st === "complete") {
-          div.classList.add("accepted");
-        }
-        if (st === "cancelled" || st === "canceled") {
-          div.classList.add("cancelled");
-        }
-
-        const shortId = formatOrderShortId(o.id);
-        const line = formatOrderItems(o.items);
-
-        div.innerHTML = `
-          <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
-            <div>
-              <div class="fw-semibold d-flex align-items-center gap-2">
-                <span>Order ${shortId}</span>
-                ${isEditingThis ? `<span class="badge text-bg-warning">Editing</span>` : ``}
-              </div>
-              <div class="small text-secondary mt-1">${line}</div>
-              <div class="small ${lbl.cls} mt-1">${lbl.text}</div>
-            </div>
-            <div class="d-flex flex-wrap gap-1 align-items-center">
-              ${
-                canEdit && !editingOrderId
-                  ? `<button type="button" class="btn btn-sm btn-outline-warning btn-mod" data-id="${o.id}">Modify</button>`
-                  : ``
-              }
-              ${
-                canEdit && editingOrderId && !isEditingThis
-                  ? `<span class="small text-secondary">Finish the edit above first</span>`
-                  : ``
-              }
-            </div>
-          </div>`;
-        list.appendChild(div);
+        div.className = "status-card " + card.stateClass;
+        const labelHTML = total > 1
+          ? `<div class="status-order-label">Delivery ${index + 1} of ${total}</div>`
+          : "";
+        const modifyBtn = card.canModify
+          ? `<button class="btn btn-sm btn-outline-warning mt-2"
+               style="font-size:0.78rem;padding:4px 12px"
+               onclick="modifyRoundOrders('${card.rId}')">
+               Modify order
+             </button>`
+          : "";
+        div.innerHTML = labelHTML +
+          `<div class="status-title">${card.icon} ${card.title}</div>` +
+          `<div class="status-subtitle">${card.subtitle}</div>` +
+          (card.itemsText ? `<div class="status-items">${card.itemsText}</div>` : "") +
+          modifyBtn;
+        topBar.appendChild(div);
       });
     }
 
-    // Event delegation (stable even when orders list re-renders frequently)
-    const ordersListEl = el("ordersList");
-    if (ordersListEl) {
-      ordersListEl.addEventListener("click", (e) => {
-        const t = /** @type {HTMLElement} */ (e.target);
-        if (!t) return;
-        const mod = t.closest && t.closest(".btn-mod");
-        if (mod && mod.dataset && mod.dataset.id) {
-          beginEditOrder(mod.dataset.id);
-        }
+    // ── Modify round orders ──
+    window.modifyRoundOrders = async function(roundId) {
+      if (!db) return;
+
+      const myRoundOrders = myOrders.filter(o =>
+        o.roundId === roundId &&
+        (o.status || "pending").toLowerCase() === "pending"
+      );
+      if (myRoundOrders.length === 0) return;
+
+      // Double-check round is still open
+      const rd = allRounds[roundId] || {};
+      if (rd.status !== "open") {
+        showAppDialog("This order can no longer be modified — Temi is already collecting.", { title: "Too late to modify", variant: "info" });
+        return;
+      }
+
+      if (!confirm("This will cancel your current order so you can resubmit with changes. Continue?")) return;
+
+      // Merge all items into one object for cart pre-fill
+      const mergedItems = {};
+      myRoundOrders.forEach(o => {
+        Object.entries(o.items || {}).forEach(([sku, qty]) => {
+          mergedItems[sku] = (mergedItems[sku] || 0) + Number(qty);
+        });
       });
+
+      // Cancel each order and return stock
+      for (const order of myRoundOrders) {
+        try {
+          // Return stock to inventory
+          await applyInventoryDeltaOrThrow(negateInventoryDelta(positiveItemCounts(order.items || {})));
+          // Cancel the order
+          await update(ref(db, "orders/" + order.id), { status: "cancelled", cancelledAt: serverTimestamp() });
+          // Remove from round's orderIds
+          await set(ref(db, "rounds/" + roundId + "/orderIds/" + order.id), null);
+        } catch (e) {
+          console.error("Cancel failed for order", order.id, e);
+        }
+      }
+
+      // Update round manifest and count
+      await runTransaction(ref(db, "rounds/" + roundId), rd => {
+        if (!rd) return rd;
+        rd.activeOrderCount = Math.max(0, (rd.activeOrderCount || 0) - myRoundOrders.length);
+        rd.itemManifest = rd.itemManifest || {};
+        Object.entries(mergedItems).forEach(([sku, qty]) => {
+          rd.itemManifest[sku] = Math.max(0, (rd.itemManifest[sku] || 0) - qty);
+        });
+        return rd;
+      });
+
+      // Remove from localStorage queue
+      const queue = loadOrderQueue();
+      const cancelledIds = myRoundOrders.map(o => o.id);
+      saveOrderQueue(queue.filter(id => !cancelledIds.includes(id)));
+
+      // Pre-fill cart with merged items
+      Object.keys(cart).forEach(k => delete cart[k]);
+      Object.entries(mergedItems).forEach(([sku, qty]) => {
+        const maxQ = maxCartQtyForSku(sku);
+        if (maxQ > 0) cart[sku] = Math.min(qty, maxQ);
+      });
+
+      updateCartUi();
+      renderCatalog();
+      el("rowBeverages")?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    // ── History UI ──
+    let historyOpen = false;
+    let activeHistoryTab = "recent";
+
+    window.toggleHistory = function() {
+      historyOpen = !historyOpen;
+      el("historyBody").style.display = historyOpen ? "block" : "none";
+      el("historyArrow").textContent = historyOpen ? "▲" : "▼";
+      if (historyOpen) renderHistorySection();
+    };
+
+    window.switchHistoryTab = function(tab) {
+      activeHistoryTab = tab;
+      el("historyRecent").style.display = tab === "recent" ? "block" : "none";
+      el("historyReorder").style.display = tab === "reorder" ? "block" : "none";
+      el("htabRecent").classList.toggle("active", tab === "recent");
+      el("htabReorder").classList.toggle("active", tab === "reorder");
+      renderHistorySection();
+    };
+
+    function renderHistorySection() {
+      const history = loadOrderHistory();
+      const countEl = el("historyCount");
+      if (countEl) countEl.textContent = history.length ? ` (${history.length})` : "";
+      if (!historyOpen) return;
+      if (activeHistoryTab === "recent") renderRecentTab(history);
+      else renderReorderTab(history);
     }
 
-    function startOrdersListener(db) {
+    function renderRecentTab(history) {
+      const container = el("historyRecent"); if (!container) return;
+      if (history.length === 0) { container.innerHTML = "<p class='text-secondary small mt-2'>No past orders yet.</p>"; return; }
+      const now = new Date();
+      const todayStr = now.toDateString();
+      const yestStr = new Date(now - 86400000).toDateString();
+      const groups = {};
+      history.forEach(o => {
+        const d = new Date(o.completedAt || 0);
+        const ds = d.toDateString();
+        const label = ds === todayStr ? "Today" : ds === yestStr ? "Yesterday" : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+        if (!groups[label]) groups[label] = [];
+        groups[label].push(o);
+      });
+      let html = "";
+      for (const [label, orders] of Object.entries(groups)) {
+        html += `<div class="hist-date-group">${label}</div>`;
+        orders.forEach(o => {
+          const itemsText = Object.entries(o.items || {}).filter(([, q]) => Number(q) > 0).map(([sku, q]) => (o.itemNames?.[sku] || sku) + " ×" + q).join(", ");
+          const time = new Date(o.completedAt || 0).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+          const badge = o.status === "complete" ? "<span class='hist-badge-done'>Delivered</span>" : "<span class='hist-badge-cancel'>Cancelled</span>";
+          const reorderBtn = o.status === "complete" ? `<button class="reorder-link" onclick='reorderItems(${JSON.stringify(JSON.stringify(o))})'>Order again →</button>` : "";
+          html += `<div class="hist-card">${badge}<div class="small text-light mt-1">${itemsText}</div><div class="text-secondary" style="font-size:0.75rem">${time}</div>${reorderBtn}</div>`;
+        });
+      }
+      container.innerHTML = html;
+    }
+
+    function renderReorderTab(history) {
+      const container = el("historyReorder"); if (!container) return;
+      const delivered = history.filter(o => o.status === "complete");
+      if (delivered.length === 0) { container.innerHTML = "<p class='text-secondary small mt-2'>No delivered orders yet.</p>"; return; }
+      const freq = {};
+      delivered.forEach(o => {
+        const key = Object.entries(o.items || {}).filter(([, q]) => Number(q) > 0).sort(([a], [b]) => a.localeCompare(b)).map(([sku, q]) => sku + ":" + q).join(",");
+        if (!freq[key]) freq[key] = { order: o, count: 0 };
+        freq[key].count++;
+      });
+      const sorted = Object.values(freq).sort((a, b) => b.count - a.count).slice(0, 5);
+      let html = "";
+      sorted.forEach(({ order, count }) => {
+        const itemsText = Object.entries(order.items || {}).filter(([, q]) => Number(q) > 0).map(([sku, q]) => (order.itemNames?.[sku] || sku) + " ×" + q).join(", ");
+        html += `<div class="fav-card"><div class="small text-light fw-semibold">${itemsText}</div><div class="text-secondary" style="font-size:0.75rem;margin-top:2px">Ordered ${count} ${count > 1 ? "times" : "time"}</div><button class="btn btn-sm btn-outline-info mt-2" onclick='reorderItems(${JSON.stringify(JSON.stringify(order))})'>Add to cart</button></div>`;
+      });
+      container.innerHTML = html;
+    }
+
+    window.reorderItems = async function(orderJson) {
+      if (!db) return;
+      let order;
+      try { order = JSON.parse(orderJson); } catch { return; }
+      const previousItems = order.items || {};
+      const itemNames = order.itemNames || {};
+      try {
+        const invSnap = await get(ref(db, "inventory"));
+        const inv = invSnap.val() || {};
+        const warnings = [];
+        const toAdd = {};
+        for (const [sku, qty] of Object.entries(previousItems)) {
+          const wantQty = Number(qty) || 0;
+          if (wantQty <= 0) continue;
+          const name = itemNames[sku] || sku;
+          if (!inv[sku]) { warnings.push(name + " is no longer available"); continue; }
+          const available = Number(inv[sku].quantity) || 0;
+          if (available === 0) { warnings.push(name + " is out of stock"); continue; }
+          if (available < wantQty) { warnings.push("Only " + available + " " + name + " available (you ordered " + wantQty + ")"); toAdd[sku] = available; continue; }
+          toAdd[sku] = wantQty;
+        }
+        if (Object.keys(toAdd).length === 0) {
+          showAppDialog("None of these items are currently available. Check the catalog for what is in stock.", { title: "Out of stock", variant: "error" });
+          return;
+        }
+        for (const [sku, qty] of Object.entries(toAdd)) {
+          const maxQ = maxCartQtyForSku(sku);
+          const existing = cart[sku] || 0;
+          const merged = Math.min(existing + qty, maxQ);
+          if (merged > 0) cart[sku] = merged;
+        }
+        mergeRemoteInventory(inv);
+        clampCartToStock();
+        renderCatalog();
+        updateCartUi();
+        if (warnings.length > 0) {
+          showAppDialog("Added what was available:\n" + warnings.join("\n"), { title: "Partial reorder", variant: "info" });
+        }
+        el("rowBeverages")?.scrollIntoView({ behavior: "smooth" });
+      } catch (e) {
+        console.error(e);
+        showAppDialog("Could not check stock. Please try again.", { title: "Error", variant: "error" });
+      }
+    };
+
+    // ── Firebase listeners ──
+    function startActiveListeners(db) {
       if (ordersUnsubscribe) return;
-      const r = ref(db, "orders");
-      ordersUnsubscribe = onValue(r, (snap) => {
+      ordersUnsubscribe = onValue(ref(db, "orders"), (snap) => {
         const rows = [];
         snap.forEach((child) => {
           const data = child.val();
-          if (!data) return;
-          if (!isMyOrder(child.key, data)) return;
-          let createdAt = 0;
-          if (data.createdAt && typeof data.createdAt === "number") {
-            createdAt = data.createdAt;
+          if (data && isMyOrder(child.key, data)) {
+            rows.push({ id: child.key, ...data });
+            // Archive completed/cancelled
+            const st = (data.status || "").toLowerCase();
+            const queue = loadOrderQueue();
+            if (["complete", "delivered"].includes(st) && queue.includes(child.key)) {
+              saveOrderQueue(queue.filter(id => id !== child.key));
+              archiveOrder(child.key, data, "complete");
+            }
+            if (["cancelled", "canceled"].includes(st) && queue.includes(child.key)) {
+              saveOrderQueue(queue.filter(id => id !== child.key));
+              archiveOrder(child.key, data, "cancelled");
+            }
           }
-          rows.push({
-            id: child.key,
-            ...data,
-            createdAt,
-          });
         });
-        lastOrdersRows = rows;
-        renderOrdersPanel(rows);
-        updateFooterFromOrders(rows);
+        myOrders = rows;
+        renderStatusBar();
+      });
+
+      onValue(ref(db, "rounds"), (snap) => {
+        allRounds = snap.val() || {};
+        renderStatusBar();
+      });
+
+      onValue(ref(db, "current_delivering_round"), (snap) => {
+        currentDeliveringRound = snap.val() || null;
+        renderStatusBar();
+      });
+
+      onValue(ref(db, "robot_state"), (snap) => {
+        robotState = snap.val() || "idle";
+        renderStatusBar();
       });
     }
 
-    async function cancelOrder(orderId) {
-      if (!db) return;
-      if (!confirm("Cancel this order?")) return;
-      try {
-        await update(ref(db, "orders/" + orderId), {
-          status: "cancelled",
-          cancelledAt: serverTimestamp(),
-        });
-      } catch (e) {
-        console.error(e);
-        showAppDialog("Could not cancel. Check Firebase rules.", {
-          title: "Couldn't cancel",
-          variant: "error",
-        });
-      }
-    }
-
-    function beginEditOrder(orderId) {
-      if (!db) return;
-      get(ref(db, "orders/" + orderId))
-        .then((snap) => {
-          const data = snap.val();
-          if (!data || !data.items) return;
-          const st = (data.status || "").toLowerCase();
-          if (st !== "pending" && st !== "") {
-            showAppDialog("Only queued orders can be edited.", {
-              title: "Can't edit this order",
-              variant: "info",
-            });
-            return;
-          }
-          Object.keys(cart).forEach((k) => delete cart[k]);
-          Object.keys(data.items).forEach((k) => {
-            cart[k] = data.items[k];
-          });
-          editingOrderId = orderId;
-          editBaselineItems = {};
-          Object.keys(data.items || {}).forEach((k) => {
-            const n = Number(data.items[k]) || 0;
-            if (n > 0) editBaselineItems[k] = n;
-          });
-          const b = el("editOrderBanner");
-          const btxt = el("editOrderBannerText");
-          if (b && btxt) {
-            btxt.textContent =
-              "Editing order " + formatOrderShortId(orderId) + " — change quantities below, then Save changes.";
-            b.classList.remove("d-none");
-          }
-          scrollTo({ top: 0, behavior: "smooth" });
-          updateCartUi();
-          renderCatalog();
-          if (lastOrdersRows.length) {
-            renderOrdersPanel(lastOrdersRows);
-          }
-        })
-        .catch((e) => {
-          console.error(e);
-          showAppDialog("Could not load order for editing. Check connection/rules.", {
-            title: "Couldn't load order",
-            variant: "error",
-          });
-        });
-    }
-
-    function endEditOrder() {
-      editingOrderId = null;
-      editBaselineItems = null;
-      const b = el("editOrderBanner");
-      if (b) b.classList.add("d-none");
-      updateCartUi();
-      if (lastOrdersRows.length) {
-        renderOrdersPanel(lastOrdersRows);
-      }
-    }
-
-    /**
-     * Merge Firebase `inventory` snapshot into global `inventory`.
-     * Firebase is the source of truth: removed SKUs disappear; new SKUs appear.
-     * `DEFAULT_INVENTORY` only fills in missing fields for known seed SKUs or minimal defaults for new SKUs.
-     */
+    // ── Inventory helpers ──
     function mergeRemoteInventory(val) {
-      if (!val || typeof val !== "object") {
-        inventory = {};
-        return;
-      }
+      if (!val || typeof val !== "object") { inventory = {}; return; }
       const skus = Object.keys(val);
-      if (skus.length === 0) {
-        inventory = {};
-        return;
-      }
+      if (skus.length === 0) { inventory = {}; return; }
       inventory = {};
       skus.forEach((sku) => {
-        const base =
-          DEFAULT_INVENTORY[sku] || {
-            name: sku,
-            emoji: "📦",
-            imageUrl: "",
-            category: "snack",
-            quantity: 0,
-          };
+        const base = DEFAULT_INVENTORY[sku] || { name: sku, emoji: "📦", imageUrl: "", category: "snack", quantity: 0 };
         inventory[sku] = { ...base, ...val[sku] };
       });
     }
 
-    /**
-     * Drop cart quantities above what’s allowed now (uses same cap as +/−: `maxCartQtyForSku`).
-     * Call after inventory updates so lines don’t stay “stuck” when pantry hits 0 or another user takes stock.
-     */
     function clampCartToStock() {
       Object.keys({ ...cart }).forEach((sku) => {
         const maxQ = maxCartQtyForSku(sku);
-        const q = cart[sku] || 0;
-        if (q > maxQ) cart[sku] = maxQ;
+        if (cart[sku] > maxQ) cart[sku] = maxQ;
         if ((cart[sku] || 0) <= 0) delete cart[sku];
       });
     }
 
-    /** True when `applyInventoryDeltaOrThrow` aborted for insufficient stock (or missing inventory node). */
     function isInventorySubmitConflict(err) {
       const m = String(err?.message || "");
-      return (
-        /out of stock|need \d+ more/i.test(m) ||
-        m.includes("Inventory not available.") ||
-        m === "Could not update inventory."
-      );
+      return /out of stock|need \d+ more/i.test(m) || m.includes("Inventory not available.") || m === "Could not update inventory.";
     }
 
-    /** Positive counts only (SKU → qty to remove from stock). */
     function positiveItemCounts(items) {
       const out = {};
-      for (const [k, v] of Object.entries(items || {})) {
-        const n = Number(v) || 0;
-        if (n > 0) out[k] = n;
-      }
+      for (const [k, v] of Object.entries(items || {})) { const n = Number(v) || 0; if (n > 0) out[k] = n; }
       return out;
     }
 
-    /** Signed delta: +n take n from stock, −n return n to stock. */
     function negateInventoryDelta(delta) {
       const out = {};
-      for (const [k, v] of Object.entries(delta || {})) {
-        const n = Number(v) || 0;
-        if (n !== 0) out[k] = -n;
-      }
+      for (const [k, v] of Object.entries(delta || {})) { const n = Number(v) || 0; if (n !== 0) out[k] = -n; }
       return out;
     }
 
     function computeItemsDelta(oldItems, newItems) {
-      const keys = new Set([
-        ...Object.keys(oldItems || {}),
-        ...Object.keys(newItems || {}),
-      ]);
+      const keys = new Set([...Object.keys(oldItems || {}), ...Object.keys(newItems || {})]);
       const delta = {};
-      for (const k of keys) {
-        const old = Number(oldItems?.[k]) || 0;
-        const neu = Number(newItems?.[k]) || 0;
-        const d = neu - old;
-        if (d !== 0) delta[k] = d;
-      }
+      for (const k of keys) { const d = (Number(newItems?.[k]) || 0) - (Number(oldItems?.[k]) || 0); if (d !== 0) delta[k] = d; }
       return delta;
     }
 
-    /**
-     * Single transaction on `inventory/`: apply signed per-SKU deltas atomically.
-     * +n removes n from stock; −n returns n to stock.
-     */
     async function applyInventoryDeltaOrThrow(deltaMap) {
-      const entries = Object.entries(deltaMap || {}).filter(
-        ([, d]) => Number(d) !== 0
-      );
+      const entries = Object.entries(deltaMap || {}).filter(([, d]) => Number(d) !== 0);
       if (entries.length === 0) return;
-
       let failReason = null;
       const res = await runTransaction(ref(db, "inventory"), (inv) => {
-        if (!inv || typeof inv !== "object") {
-          failReason = "Inventory not available.";
-          return;
-        }
-        for (const [sku, dRaw] of entries) {
-          const d = Number(dRaw) || 0;
-          if (d <= 0) continue;
-          const q = Number(inv?.[sku]?.quantity) || 0;
-          if (q < d) {
-            const name = inv?.[sku]?.name || sku;
-            failReason = `${name} is out of stock (need ${d} more, have ${q}).`;
-                return;
-            }
-        }
-        for (const [sku, dRaw] of entries) {
-          const d = Number(dRaw) || 0;
-          if (d === 0) continue;
-          const q = Number(inv?.[sku]?.quantity) || 0;
-          inv[sku] = inv[sku] || {};
-          inv[sku].quantity = q - d;
-        }
+        if (!inv || typeof inv !== "object") { failReason = "Inventory not available."; return; }
+        for (const [sku, dRaw] of entries) { const d = Number(dRaw) || 0; if (d <= 0) continue; const q = Number(inv?.[sku]?.quantity) || 0; if (q < d) { const name = inv?.[sku]?.name || sku; failReason = `${name} is out of stock (need ${d} more, have ${q}).`; return; } }
+        for (const [sku, dRaw] of entries) { const d = Number(dRaw) || 0; if (d === 0) continue; const q = Number(inv?.[sku]?.quantity) || 0; inv[sku] = inv[sku] || {}; inv[sku].quantity = q - d; }
         return inv;
       });
-
-      if (!res.committed) {
-        throw new Error(failReason || "Could not update inventory.");
-      }
+      if (!res.committed) throw new Error(failReason || "Could not update inventory.");
     }
 
+    // ── Edit order ──
+    function beginEditOrder(orderId) {
+      if (!db) return;
+      get(ref(db, "orders/" + orderId)).then((snap) => {
+        const data = snap.val();
+        if (!data || !data.items) return;
+        const st = (data.status || "").toLowerCase();
+        if (st !== "pending" && st !== "") { showAppDialog("Only queued orders can be edited.", { title: "Can't edit", variant: "info" }); return; }
+        Object.keys(cart).forEach((k) => delete cart[k]);
+        Object.keys(data.items).forEach((k) => { cart[k] = data.items[k]; });
+        editingOrderId = orderId;
+        editBaselineItems = {};
+        Object.keys(data.items || {}).forEach((k) => { const n = Number(data.items[k]) || 0; if (n > 0) editBaselineItems[k] = n; });
+        const b = el("editOrderBanner"); const btxt = el("editOrderBannerText");
+        if (b && btxt) { btxt.textContent = "Editing your order — change quantities below, then Save changes."; b.classList.remove("d-none"); }
+        scrollTo({ top: 0, behavior: "smooth" });
+        updateCartUi(); renderCatalog();
+      }).catch((e) => { console.error(e); showAppDialog("Could not load order for editing.", { title: "Error", variant: "error" }); });
+    }
+
+    function endEditOrder() {
+      editingOrderId = null; editBaselineItems = null;
+      const b = el("editOrderBanner"); if (b) b.classList.add("d-none");
+      updateCartUi();
+    }
+
+    // ── Submit order ──
     async function submitOrder(db) {
       const items = positiveItemCounts(cart);
-      const keys = Object.keys(items);
-      if (keys.length === 0) return;
-
+      if (Object.keys(items).length === 0) return;
+      const btn = el("btnSubmit");
+      btn.disabled = true;
       try {
         if (editingOrderId) {
           const oid = editingOrderId;
-
-          let delta;
-          {
-            const snap2 = await get(ref(db, "orders/" + oid));
-            const prev2 = snap2.val() || {};
-            const oldItems2 = prev2.items || {};
-            const hadDebit2 = !!prev2.inventoryDebitedAt;
-            if (!hadDebit2) {
-              delta = items;
-            } else {
-              delta = computeItemsDelta(oldItems2, items);
-            }
-          }
-
-          if (Object.keys(delta).length > 0) {
-            await applyInventoryDeltaOrThrow(delta);
-          }
-
+          const snap2 = await get(ref(db, "orders/" + oid));
+          const prev2 = snap2.val() || {};
+          const oldItems2 = prev2.items || {};
+          const hadDebit2 = !!prev2.inventoryDebitedAt;
+          const delta = hadDebit2 ? computeItemsDelta(oldItems2, items) : items;
+          if (Object.keys(delta).length > 0) await applyInventoryDeltaOrThrow(delta);
           try {
-            await update(ref(db, "orders/" + oid), {
-              items,
-              status: "pending",
-              updatedAt: serverTimestamp(),
-              inventoryDebitedAt: serverTimestamp(),
-            });
+            await update(ref(db, "orders/" + oid), { items, status: "pending", updatedAt: serverTimestamp(), inventoryDebitedAt: serverTimestamp() });
           } catch (writeErr) {
-            if (Object.keys(delta).length > 0) {
-              try {
-                await applyInventoryDeltaOrThrow(negateInventoryDelta(delta));
-              } catch (rb) {
-                console.error("Inventory rollback failed", rb);
-              }
-            }
+            if (Object.keys(delta).length > 0) { try { await applyInventoryDeltaOrThrow(negateInventoryDelta(delta)); } catch (rb) { console.error("Rollback failed", rb); } }
             throw writeErr;
           }
-
           await set(ref(db, "admin/notification_pending"), true);
           await set(ref(db, "admin/latest_order_id"), oid);
           endEditOrder();
           Object.keys(cart).forEach((k) => delete cart[k]);
-          updateCartUi();
-          renderCatalog();
-          setFooterStatus("accepted", "✓ Changes saved (still queued)");
+          updateCartUi(); renderCatalog();
           return;
         }
 
-        const ordersRef = ref(db, "orders");
-        const newRef = push(ordersRef);
-        const orderId = newRef.key;
-        const payload = {
-          items,
-          status: "pending",
-          sessionId,
-          createdAt: serverTimestamp(),
-          source: "customer_web",
-          inventoryDebitedAt: serverTimestamp(),
-        };
+        // Get or create round
+        const currentRoundSnap = await get(ref(db, "current_round_id"));
+        const currentRoundId = currentRoundSnap.val();
+        let targetRoundId = null;
+        let needNewRound = false;
+        if (!currentRoundId) {
+          needNewRound = true;
+        } else {
+          const roundSnap = await get(ref(db, "rounds/" + currentRoundId));
+          const rd = roundSnap.val();
+          if (!rd || rd.status !== "open" || rd.deadline < Date.now()) needNewRound = true;
+        }
+        if (needNewRound) {
+          const newRoundRef = push(ref(db, "rounds"));
+          targetRoundId = newRoundRef.key;
+          await set(newRoundRef, { status: "open", deadline: Date.now() + 600000, activeOrderCount: 0, itemManifest: {}, orderIds: {} });
+          const txRes = await runTransaction(ref(db, "current_round_id"), (cur) => { if (!cur) return targetRoundId; return cur; });
+          if (txRes.snapshot.val() !== targetRoundId) {
+            // Another user won the race — delete our orphan round and use theirs
+            await set(newRoundRef, null);
+            targetRoundId = txRes.snapshot.val();
+          }
+        } else {
+          targetRoundId = currentRoundId;
+        }
 
+        // Debit inventory
         const take = { ...items };
         await applyInventoryDeltaOrThrow(take);
 
+        // Push order
+        const ordersRef = ref(db, "orders");
+        const newRef = push(ordersRef);
+        const orderId = newRef.key;
+        const payload = { items, status: "pending", sessionId, createdAt: serverTimestamp(), source: "customer_web", inventoryDebitedAt: serverTimestamp(), roundId: targetRoundId };
+
         try {
-          await set(newRef, payload);
+          await update(ref(db, "/"), {
+            [`orders/${orderId}`]: payload,
+            [`rounds/${targetRoundId}/orderIds/${orderId}`]: true,
+            "admin/notification_pending": true,
+            "admin/latest_order_id": orderId,
+          });
         } catch (writeErr) {
-          try {
-            await applyInventoryDeltaOrThrow(negateInventoryDelta(take));
-          } catch (rb) {
-            console.error("Inventory rollback failed", rb);
-          }
+          try { await applyInventoryDeltaOrThrow(negateInventoryDelta(take)); } catch (rb) { console.error("Rollback failed", rb); }
           throw writeErr;
         }
 
-        await set(ref(db, "admin/notification_pending"), true);
-        await set(ref(db, "admin/latest_order_id"), orderId);
+        // Update round manifest and count
+        await runTransaction(ref(db, "rounds/" + targetRoundId), (roundData) => {
+          if (roundData) {
+            roundData.activeOrderCount = (roundData.activeOrderCount || 0) + 1;
+            roundData.itemManifest = roundData.itemManifest || {};
+            for (const k of Object.keys(items)) { roundData.itemManifest[k] = (roundData.itemManifest[k] || 0) + items[k]; }
+          }
+          return roundData;
+        });
+
         addOrderToQueue(orderId);
         Object.keys(cart).forEach((k) => delete cart[k]);
-        updateCartUi();
-        renderCatalog();
+        updateCartUi(); renderCatalog();
       } catch (e) {
         console.error(e);
         if (db && isInventorySubmitConflict(e)) {
-          try {
-            const invSnap = await get(ref(db, "inventory"));
-            mergeRemoteInventory(invSnap.val());
-            clampCartToStock();
-            renderCatalog();
-            updateCartUi();
-          } catch (refreshErr) {
-            console.error("Could not refresh inventory", refreshErr);
-          }
+          try { const invSnap = await get(ref(db, "inventory")); mergeRemoteInventory(invSnap.val()); clampCartToStock(); renderCatalog(); updateCartUi(); } catch {}
         }
-        const msg =
-          e?.message ||
-          "Could not submit order. Check connection and Firebase rules.";
-        showAppDialog(msg, {
-          title: isInventorySubmitConflict(e)
-            ? "Not enough stock"
-            : "Couldn't submit order",
-          variant: "error",
-        });
+        showAppDialog(e.message || "Could not submit order.", { title: "Error", variant: "error" });
+      } finally {
+        btn.disabled = Object.keys(cart).filter(k => cart[k] > 0).length === 0;
       }
     }
 
-    // --- Firebase ---
-    try {
-      const app = initializeApp(firebaseConfig);
-      db = getDatabase(app);
-    } catch (e) {
-      showFirebaseError("Firebase failed to initialize.");
-      console.error(e);
-    }
+    // ── Firebase init ──
+    try { const app = initializeApp(firebaseConfig); db = getDatabase(app); } catch (e) { showFirebaseError("Firebase failed to initialize."); console.error(e); }
 
     if (db) {
-      // Avoid flashing DEFAULT_INVENTORY items that Firebase may have removed (~200ms+ until snapshot).
       inventory = {};
-      el("rowBeverages").innerHTML =
-        '<div class="col-12 text-secondary small">Loading…</div>';
+      el("rowBeverages").innerHTML = '<div class="col-12 text-secondary small">Loading…</div>';
       el("rowSnacks").innerHTML = "";
       updateCartUi();
-
-      onValue(
-        ref(db, "inventory"),
-        (snap) => {
-          mergeRemoteInventory(snap.val());
-          clampCartToStock();
-          renderCatalog();
-          updateCartUi();
-        },
-        (err) => {
-          console.error(err);
-          showFirebaseError("Could not read inventory. Using offline defaults.");
-          inventory = { ...DEFAULT_INVENTORY };
-          renderCatalog();
-        }
-      );
+      onValue(ref(db, "inventory"), (snap) => { mergeRemoteInventory(snap.val()); clampCartToStock(); renderCatalog(); updateCartUi(); }, (err) => { console.error(err); showFirebaseError("Could not read inventory."); inventory = { ...DEFAULT_INVENTORY }; renderCatalog(); });
+      try { const legacy = sessionStorage.getItem("temi_active_order_id"); if (legacy && !loadOrderQueue().includes(legacy)) { addOrderToQueue(legacy); } sessionStorage.removeItem("temi_active_order_id"); } catch {}
+      startActiveListeners(db);
     } else {
-      inventory = { ...DEFAULT_INVENTORY };
-      renderCatalog();
-      updateCartUi();
+      inventory = { ...DEFAULT_INVENTORY }; renderCatalog(); updateCartUi();
     }
 
-    el("btnSubmit").addEventListener("click", () => {
-      if (!db) return;
-      submitOrder(db);
-    });
+    el("btnSubmit").addEventListener("click", () => { if (!db) return; submitOrder(db); });
 
     const overlayTap = el("overlayTap");
-
-    if (db) {
-      try {
-        const legacy = sessionStorage.getItem("temi_active_order_id");
-        if (legacy && !loadOrderQueue().includes(legacy)) {
-          addOrderToQueue(legacy);
-        }
-        sessionStorage.removeItem("temi_active_order_id");
-      } catch {
-        /* ignore */
-      }
-      startOrdersListener(db);
-      /* Do NOT auto-hide the tap overlay when the user has queued orders in localStorage.
-       * That dismissed the sheet without a real gesture — Brave/Safari then block speech, so
-       * the overlay vanished and no voice played. One tap is always required to unlock voice. */
-    }
-
-    // Voice + tap overlay (must run in a real user gesture — do not auto-dismiss)
     let voiceTapDismissed = false;
     function dismissTapOverlay() {
-        if (voiceTapDismissed) return;
-        voiceTapDismissed = true;
-        overlayTap.classList.remove("active");
-
-        // iOS REQUIRES speak() called synchronously in the gesture.
-        // Prime with a silent utterance to unlock audio, then speak real one.
-        const synth = window.speechSynthesis;
-        if (synth) {
-          try {
-            const primer = new SpeechSynthesisUtterance(" ");
-            primer.volume = 0;
-            primer.onend = () => speakIntro(false);
-            primer.onerror = () => speakIntro(false);
-            synth.speak(primer);
-          } catch {
-            speakIntro(false);
-          }
-        } else {
-          speakIntro(false);
-        }
-
-        overlayTap.removeEventListener("click", dismissTapOverlay);
-        overlayTap.removeEventListener("pointerdown", dismissTapOverlay);
-}
-    /* pointerdown + click: mobile (Brave/Android) often delivers touch more reliably than delayed click */
+      if (voiceTapDismissed) return; voiceTapDismissed = true;
+      overlayTap.classList.remove("active");
+      try { if (window.speechSynthesis) { window.speechSynthesis.getVoices(); } } catch {}
+      speakIntro(false);
+      overlayTap.removeEventListener("click", dismissTapOverlay);
+      overlayTap.removeEventListener("pointerdown", dismissTapOverlay);
+    }
     overlayTap.addEventListener("pointerdown", dismissTapOverlay);
     overlayTap.addEventListener("click", dismissTapOverlay);
 
     const btnReplay = el("btnReplayIntro");
     if (btnReplay) {
       btnReplay.addEventListener("click", () => {
-        // For replay only: cancel is OK (new gesture). Add a tiny delay to avoid
-        // Android swallowing speak() immediately after cancel().
-        try {
-          if (window.speechSynthesis) window.speechSynthesis.cancel();
-        } catch {
-          /* ignore */
-        }
+        try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch {}
         setTimeout(() => speakIntro(true), 100);
       });
     }
 
+    renderHistorySection();
     updateCartUi();
-    </script>
+  </script>
 </body>
 </html>
