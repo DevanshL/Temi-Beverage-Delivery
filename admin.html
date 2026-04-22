@@ -43,6 +43,43 @@
     .pop-bar-wrap { flex: 1; background: rgba(15,23,42,0.5); border-radius: 99px; height: 6px; overflow: hidden; }
     .pop-bar { height: 6px; border-radius: 99px; background: #0f6e56; }
     .section-sub { font-size: 0.72rem; color: #475569; text-transform: uppercase; letter-spacing: 0.08em; margin: 12px 0 8px; }
+    #adminConfirm {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(10,16,30,0.82);
+      display: none; align-items: center; justify-content: center; padding: 24px;
+    }
+    #adminConfirm.active { display: flex; }
+    #adminConfirmCard {
+      background: rgba(22,32,52,0.99);
+      border: 1px solid rgba(148,163,184,0.2);
+      border-radius: 20px; padding: 28px 24px;
+      max-width: 400px; width: 100%;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+    }
+    #adminConfirmTitle {
+      font-size: 1.05rem; font-weight: 600;
+      color: #f1f5f9; margin-bottom: 10px;
+    }
+    #adminConfirmBody {
+      font-size: 0.875rem; color: #94a3b8;
+      line-height: 1.65; margin-bottom: 24px;
+      white-space: pre-line;
+    }
+    .confirm-btn-row {
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    #adminConfirmOk {
+      padding: 13px; font-size: 0.95rem;
+      border-radius: 12px; font-weight: 600;
+    }
+    #adminConfirmCancel {
+      padding: 11px; font-size: 0.88rem;
+      border-radius: 12px;
+      background: transparent;
+      border: 1px solid rgba(148,163,184,0.2);
+      color: #64748b; cursor: pointer;
+    }
+    #adminConfirmCancel:hover { color: #94a3b8; border-color: rgba(148,163,184,0.35); }
   </style>
 </head>
 <body>
@@ -163,6 +200,18 @@
   </div>
 </div>
 
+<!-- Custom confirm dialog -->
+<div id="adminConfirm" role="dialog" aria-modal="true">
+  <div id="adminConfirmCard">
+    <div id="adminConfirmTitle">Confirm</div>
+    <div id="adminConfirmBody"></div>
+    <div class="confirm-btn-row">
+      <button type="button" class="btn btn-accent text-white" id="adminConfirmOk">OK</button>
+      <button type="button" id="adminConfirmCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Notification modal -->
 <div class="modal fade" id="notifModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
@@ -181,13 +230,40 @@
   import { getDatabase, ref, onValue, get, set, update, remove, runTransaction, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
 
   const firebaseConfig = {
-    apiKey: "AIzaSyCTOREQwSXlET_OH764k5bbwo4hn_GtvHA",
-    authDomain: "temi-beverage-delivery.firebaseapp.com",
-    databaseURL: "https://temi-beverage-delivery-default-rtdb.firebaseio.com",
-    projectId: "temi-beverage-delivery",
+    apiKey: "AIzaSyD9dFxNB6zdl9ZKerok3XqzhzDvuODbifM",
+    authDomain: "temi-beverage-delivery-dev.firebaseapp.com",
+    databaseURL: "https://temi-beverage-delivery-dev-default-rtdb.firebaseio.com",
+    projectId: "temi-beverage-delivery-dev",
+    storageBucket: "temi-beverage-delivery-dev.firebasestorage.app",
+    messagingSenderId: "680311210831",
+    appId: "1:680311210831:web:1903f9e7f6f721328dfb3a",
   };
 
   const el = (id) => document.getElementById(id);
+
+  // ── Custom confirm dialog (replaces browser native confirm) ──
+  function adminConfirm(title, body, okLabel = "OK", cancelLabel = "Cancel") {
+    return new Promise(resolve => {
+      const overlay = document.getElementById("adminConfirm");
+      document.getElementById("adminConfirmTitle").textContent = title;
+      document.getElementById("adminConfirmBody").textContent = body;
+      document.getElementById("adminConfirmOk").textContent = okLabel;
+      document.getElementById("adminConfirmCancel").textContent = cancelLabel;
+      // Hide cancel button if no cancel label provided
+      const cancelBtn = document.getElementById("adminConfirmCancel");
+      cancelBtn.style.display = cancelLabel ? "" : "none";
+      overlay.classList.add("active");
+      const ok = document.getElementById("adminConfirmOk");
+      const close = (result) => {
+        overlay.classList.remove("active");
+        ok.onclick = null;
+        cancelBtn.onclick = null;
+        resolve(result);
+      };
+      ok.onclick = () => close(true);
+      cancelBtn.onclick = () => close(false);
+    });
+  }
 
   function escapeHtml(s) { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
   function escapeHtmlAttr(s) { return String(s ?? "").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/'/g,"&#39;").replace(/</g,"&lt;"); }
@@ -212,7 +288,25 @@
     else { viewLogin.classList.remove("d-none"); viewApp.classList.add("d-none"); btnLogout.classList.add("d-none"); }
   }
 
-  onAuthStateChanged(auth, (user) => { setLoggedIn(Boolean(user)); clearErr(); });
+  onAuthStateChanged(auth, (user) => {
+    setLoggedIn(Boolean(user));
+    clearErr();
+    if (user) {
+      // Auto-heal: if current_delivering_round points to a done/cancelled round, clear it
+      setTimeout(async () => {
+        try {
+          if (!currentDeliveringRound) return;
+          const snap = await get(ref(db, "rounds/" + currentDeliveringRound + "/status"));
+          const st = snap.val();
+          if (!st || st === "done" || st === "cancelled") {
+            await set(ref(db, "current_delivering_round"), "");
+            await set(ref(db, "active_order_id"), "");
+            console.log("Auto-cleared stale delivering round:", currentDeliveringRound);
+          }
+        } catch (e) { console.error("Auto-heal check failed", e); }
+      }, 2000);
+    }
+  });
   el("btnLogin").addEventListener("click", async () => {
     try { await signInWithEmailAndPassword(auth, (el("email").value||"").trim(), el("password").value||""); } catch (e) { console.error(e); showErr("Login failed. Check email and password."); }
   });
@@ -282,19 +376,83 @@
   // ── Manual controls ──
   el("btnSendManual").addEventListener("click", async () => {
     const loc = el("selManualLocation").value;
-    if (temiIsBusy()) { if (!confirm("Temi looks busy. Send anyway?")) return; }
-    try { await set(ref(db, "location"), loc); await set(ref(db, "status"), "admin_manual_to_" + loc.replace(" ","_")); } catch (e) { alert("Could not send command."); }
+    if (temiIsBusy()) {
+      const goManual = await adminConfirm("Temi is busy", "Temi looks busy. Send a new command anyway?", "Send anyway", "Cancel");
+      if (!goManual) return;
+    }
+    try { await set(ref(db, "location"), loc); await set(ref(db, "status"), "admin_manual_to_" + loc.replace(" ","_")); } catch (e) { adminConfirm("Error", "Could not send command. Check Firebase rules.", "OK", ""); }
   });
   el("btnResetIdle").addEventListener("click", async () => {
-    if (temiIsBusy()) { if (!confirm("Temi looks busy. Reset anyway?")) return; }
+    if (temiIsBusy()) {
+      const go = await adminConfirm("Temi is busy", "Temi looks busy. Reset anyway?", "Reset", "Cancel");
+      if (!go) return;
+    }
     try {
+      if (currentDeliveringRound) {
+        const round = allRounds[currentDeliveringRound];
+        const orderIds = Object.keys(round?.orderIds || {});
+        const requeue = orderIds.length > 0
+        ? await adminConfirm(
+            "Active delivery round",
+            "There is an active delivery round with " + orderIds.length + " order(s).\n\nOK → Put orders back to pending\nCancel → Just reset Temi",
+            "Re-queue orders", "Just reset Temi"
+          )
+        : false;
+        if (requeue) {
+          await update(ref(db, "rounds/" + currentDeliveringRound), {
+            status: "closed", closedAt: serverTimestamp()
+          });
+          const updates = {};
+          orderIds.forEach(oid => {
+            updates["orders/" + oid + "/status"] = "pending";
+            updates["orders/" + oid + "/startedAt"] = null;
+          });
+          if (Object.keys(updates).length > 0) await update(ref(db, "/"), updates);
+        } else {
+          await update(ref(db, "rounds/" + currentDeliveringRound), { status: "cancelled" });
+        }
+      }
       await set(ref(db, "location"), "none");
       await set(ref(db, "status"), "idle");
       await set(ref(db, "robot_state"), "idle");
       await set(ref(db, "active_order_id"), "");
       await set(ref(db, "current_delivering_round"), "");
-    } catch (e) { alert("Reset failed."); }
+    } catch (e) { console.error(e); adminConfirm("Reset failed", e.message, "OK", ""); }
   });
+
+  window.cancelRound = async function(roundId) {
+    const round = allRounds[roundId]; if (!round) return;
+    const orderIds = Object.keys(round.orderIds || {});
+    const confirmed = await adminConfirm(
+      "Cancel round",
+      `${orderIds.length} order(s) will be cancelled and stock returned to inventory.\n\nThis cannot be undone.`,
+      "Cancel round", "Go back"
+    );
+    if (!confirmed) return;
+    try {
+      // Return stock for each order
+      for (const oid of orderIds) {
+        const orderSnap = await get(ref(db, "orders/" + oid));
+        const orderData = orderSnap.val();
+        if (!orderData?.items || !orderData.inventoryDebitedAt) continue;
+        await runTransaction(ref(db, "inventory"), inv => {
+          if (!inv) return inv;
+          Object.entries(orderData.items || {}).forEach(([sku, qty]) => {
+            if (inv[sku]) inv[sku].quantity = (Number(inv[sku].quantity) || 0) + Number(qty);
+          });
+          return inv;
+        });
+      }
+      // Cancel all orders and the round atomically
+      const updates = {};
+      orderIds.forEach(oid => {
+        updates[`orders/${oid}/status`] = "cancelled";
+        updates[`orders/${oid}/cancelledAt`] = serverTimestamp();
+      });
+      updates[`rounds/${roundId}/status`] = "cancelled";
+      await update(ref(db, "/"), updates);
+    } catch (e) { console.error(e); adminConfirm("Cancel failed", e.message, "OK", ""); }
+  };
 
   // ── Rounds panel ──
   let countdownInterval = null;
@@ -363,25 +521,64 @@
 
   function renderQueueSection(closed) {
     const el2 = el("roundQueueSection"); if (!el2) return;
-    if (closed.length === 0) { el2.innerHTML = ""; return; }
+
+    // Auto-delete any empty closed rounds silently
+    closed.forEach(([id, round]) => {
+      const orderCount = Object.keys(round.orderIds || {}).length;
+      if (orderCount === 0) {
+        set(ref(db, "rounds/" + id), null).catch(e => console.error("Delete empty round:", e));
+      }
+    });
+
+    // Only show rounds that have orders
+    const nonEmpty = closed.filter(([, round]) => Object.keys(round.orderIds || {}).length > 0);
+    if (nonEmpty.length === 0) { el2.innerHTML = ""; return; }
     const isIdle = !temiIsBusy();
     const noActive = !currentDeliveringRound;
+    const today = new Date().toDateString();
+
     el2.innerHTML = `<div class="section-sub">Queue — waiting for Temi</div>` +
-      closed.map(([id, round]) => {
+      nonEmpty.map(([id, round]) => {
         const orderCount = Object.keys(round.orderIds || {}).length;
         const canStart = isIdle && noActive;
         const reason = !isIdle ? "Temi is busy" : !noActive ? "Another round is being delivered" : "";
+
+        const closedDate = new Date(round.closedAt || round.deadline || 0);
+        const isOldRound = closedDate.toDateString() !== today;
+        const timeLabel = isOldRound
+          ? closedDate.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
+            " " + closedDate.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
+          : closedDate.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+
+        const oldWarning = isOldRound
+          ? `<div class="small mt-1" style="color:#ef9f27">
+               ⚠ From ${timeLabel} — confirm customers are still available
+             </div>`
+          : "";
+
         return `<div class="round-card closed-r">
           <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
             <div>
               <span class="badge text-bg-info mb-1">Ready to dispatch</span>
-              <div class="fw-semibold">${orderCount} order${orderCount!==1?"s":""}</div>
-              <div class="text-secondary small">Closed ${fmtTime(round.closedAt)}</div>
+              <div class="fw-semibold">${orderCount} order${orderCount !== 1 ? "s" : ""}</div>
+              <div class="text-secondary small">Closed ${timeLabel}</div>
+              ${oldWarning}
             </div>
-            <button class="btn btn-sm btn-accent text-white" ${canStart?"":"disabled"} onclick="startTrip('${escapeHtmlAttr(id)}')">Start trip &rarr;</button>
+            <button class="btn btn-sm btn-accent text-white"
+              ${canStart ? "" : "disabled"}
+              onclick="startTrip('${escapeHtmlAttr(id)}')">
+              Start trip &rarr;
+            </button>
           </div>
           <div class="round-manifest">${formatManifest(round.itemManifest)}</div>
-          ${reason ? `<div class="text-secondary small">${escapeHtml(reason)}</div>` : ""}
+          ${reason ? `<div class="text-secondary small mb-2">${escapeHtml(reason)}</div>` : ""}
+          <div style="border-top:1px solid rgba(148,163,184,0.1);margin-top:10px;padding-top:10px">
+            <button class="btn btn-sm btn-outline-danger w-100"
+              style="font-size:0.78rem;opacity:0.7"
+              onclick="cancelRound('${escapeHtmlAttr(id)}')">
+              Cancel round &amp; return stock
+            </button>
+          </div>
         </div>`;
       }).join("");
   }
@@ -421,6 +618,16 @@
   // ── Round actions ──
   window.closeRoundNow = async function(roundId) {
     try {
+      const snap = await get(ref(db, "rounds/" + roundId));
+      const round = snap.val();
+      if (!round) return;
+      const orderCount = Object.keys(round.orderIds || {}).length;
+      if (orderCount === 0) {
+        // Empty round — delete silently
+        await set(ref(db, "rounds/" + roundId), null);
+        await runTransaction(ref(db, "current_round_id"), cur => cur === roundId ? "" : cur);
+        return;
+      }
       await runTransaction(ref(db, "rounds/" + roundId + "/status"), cur => cur === "open" ? "closed" : undefined);
       await set(ref(db, "rounds/" + roundId + "/closedAt"), serverTimestamp());
       await runTransaction(ref(db, "current_round_id"), cur => cur === roundId ? "" : cur);
@@ -430,8 +637,21 @@
   async function autoCloseRound() {
     if (!currentRoundId) return;
     try {
-      const snap = await get(ref(db, "rounds/" + currentRoundId + "/status"));
-      if (snap.val() !== "open") return;
+      const snap = await get(ref(db, "rounds/" + currentRoundId));
+      const round = snap.val();
+      if (!round || round.status !== "open") return;
+
+      const orderCount = Object.keys(round.orderIds || {}).length;
+
+      if (orderCount === 0) {
+        // Empty round — delete it silently, no trace in history
+        await set(ref(db, "rounds/" + currentRoundId), null);
+        await runTransaction(ref(db, "current_round_id"), cur => cur === currentRoundId ? "" : cur);
+        console.log("Empty round deleted:", currentRoundId);
+        return;
+      }
+
+      // Has orders — close normally
       await runTransaction(ref(db, "rounds/" + currentRoundId + "/status"), cur => cur === "open" ? "closed" : undefined);
       await set(ref(db, "rounds/" + currentRoundId + "/closedAt"), serverTimestamp());
       await runTransaction(ref(db, "current_round_id"), cur => cur === currentRoundId ? "" : cur);
@@ -440,6 +660,12 @@
 
   window.startTrip = async function(roundId) {
     const round = allRounds[roundId]; if (!round) return;
+    const orderCount = Object.keys(round.orderIds || {}).length;
+    if (orderCount === 0) {
+      // Empty round — delete it instead of starting a pointless trip
+      await set(ref(db, "rounds/" + roundId), null);
+      return;
+    }
     try {
       await update(ref(db, "rounds/" + roundId), { status: "locked", lockedAt: serverTimestamp() });
       await set(ref(db, "current_delivering_round"), roundId);
@@ -449,7 +675,7 @@
       const updates = {};
       Object.keys(round.orderIds || {}).forEach(oid => { updates["orders/" + oid + "/status"] = "ongoing"; updates["orders/" + oid + "/startedAt"] = serverTimestamp(); });
       if (Object.keys(updates).length > 0) await update(ref(db, "/"), updates);
-    } catch (e) { console.error(e); alert("Start trip failed: " + e.message); }
+    } catch (e) { console.error(e); adminConfirm("Start trip failed", e.message, "OK", ""); }
   };
 
   window.dispatchRound = async function(roundId) {
@@ -457,7 +683,7 @@
       await set(ref(db, "location"), "gaming");
       await set(ref(db, "status"), "admin_dispatched_to_gaming");
       await update(ref(db, "rounds/" + roundId), { status: "delivering" });
-    } catch (e) { console.error(e); alert("Dispatch failed: " + e.message); }
+    } catch (e) { console.error(e); adminConfirm("Dispatch failed", e.message, "OK", ""); }
   };
 
   // Auto-close interval
@@ -617,7 +843,7 @@
     console.error(err);
     const code = err?.code||""; const msg = err?.message||String(err);
     const isPerm = code==="permission-denied"||/permission|PERMISSION_DENIED/i.test(msg);
-    alert(isPerm ? `Permission denied (${actionLabel}). Check Firebase rules. ${msg}` : `${actionLabel} failed: ${msg}`);
+    adminConfirm(isPerm ? "Permission denied" : "Action failed", isPerm ? `Permission denied (${actionLabel}). Check Firebase rules.\n${msg}` : `${actionLabel} failed: ${msg}`, "OK", "");
   }
 
   el("btnAddInventory").addEventListener("click", async () => {
@@ -627,12 +853,12 @@
     const category = el("addCategory").value;
     const qty = Math.max(0, Math.min(99999, Math.floor(Number(el("addQty").value)||0)));
     const imageUrl = (el("addImageUrl").value||"").trim();
-    if (!isValidSku(skuRaw)) { alert("SKU must use lowercase letters, numbers, underscores, hyphens."); return; }
-    if (!name) { alert("Name is required."); return; }
+    if (!isValidSku(skuRaw)) { adminConfirm("Invalid SKU", "SKU must use lowercase letters, numbers, underscores, and hyphens.", "OK", ""); return; }
+    if (!name) { adminConfirm("Name required", "Please enter a display name for this item.", "OK", ""); return; }
     const btn = el("btnAddInventory"); btn.disabled = true;
     try {
       const snapNew = await get(ref(db, "inventory/" + skuRaw));
-      if (snapNew.val() != null) { alert(`SKU "${skuRaw}" already exists.`); return; }
+      if (snapNew.val() != null) { adminConfirm("SKU exists", `SKU "${skuRaw}" already exists. Choose a different SKU.`, "OK", ""); return; }
       await set(ref(db, "inventory/" + skuRaw), { name, emoji, category, quantity: qty, customizable: false, imageUrl: imageUrl || "" });
       el("addSku").value=""; el("addName").value=""; el("addEmoji").value=""; el("addCategory").value="beverage"; el("addQty").value="10"; el("addImageUrl").value="";
     } catch (err) { inventoryPermAlert(err, "Add item"); } finally { btn.disabled = false; }
@@ -643,7 +869,8 @@
     const del = t.closest&&t.closest(".btn-inv-delete");
     if (del&&del.dataset.sku) {
       const sku=del.dataset.sku; const it=inventory[sku]||{}; const label=it.name||sku;
-      if (!confirm(`Remove "${label}" (${sku})?`)) return;
+      const delConfirmed = await adminConfirm("Remove item", `Remove "${label}" (${sku}) from inventory?\n\nThis cannot be undone.`, "Remove", "Cancel");
+      if (!delConfirmed) return;
       del.disabled=true;
       try { await remove(ref(db,"inventory/"+sku)); if(editingSku===sku)editingSku=null; } catch(err){inventoryPermAlert(err,"Delete item");} finally{del.disabled=false;}
       return;
@@ -659,7 +886,7 @@
       const emoji=row.querySelector(".inv-in-emoji")?.value?.trim()??"";
       const category=row.querySelector(".inv-in-category")?.value??"beverage";
       const imageUrl=row.querySelector(".inv-in-imageurl")?.value?.trim()??"";
-      if(!name){alert("Name required.");return;}
+      if(!name){ adminConfirm("Name required", "Please enter a display name.", "OK", ""); return; }
       saveBtn.disabled=true;
       try{await update(ref(db,"inventory/"+sku),{name,emoji,category,imageUrl:imageUrl||""});editingSku=null;renderInventory();}catch(err){inventoryPermAlert(err,"Save item");}finally{saveBtn.disabled=false;}
       return;

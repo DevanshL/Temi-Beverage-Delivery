@@ -13,10 +13,17 @@
       --accent-2: #a78bfa;
       --text-muted: #94a3b8;
     }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background-color: #0f172a;
+    }
     body {
-      min-height: 100vh;
+      height: 100vh;
+      overflow-y: auto;
       background: radial-gradient(ellipse 120% 80% at 50% -20%, #1e3a5f 0%, var(--bg-deep) 45%),
         linear-gradient(160deg, #0f172a 0%, #1e1b4b 100%);
+      background-attachment: fixed;
       color: #f1f5f9;
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       padding-bottom: 120px;
@@ -138,7 +145,113 @@
       border-top: 1px solid rgba(148,163,184,0.1);
     }
 
-    /* History section */
+    /* ── Compact tracker bar ── */
+    #compactTracker {
+      display: none;
+      background: rgba(15,23,42,0.75);
+      border: 1px solid rgba(148,163,184,0.18);
+      border-radius: 16px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      cursor: pointer;
+      transition: border-color 0.4s, box-shadow 0.4s;
+    }
+    #compactTracker:active { opacity: 0.85; }
+    #compactTracker.ct-moving { border-color: rgba(56,139,221,0.6); }
+    #compactTracker.ct-arrived {
+      border-color: rgba(29,158,117,0.9);
+      animation: pulseGreen 2s infinite;
+    }
+    #compactTracker.ct-open { border-color: rgba(29,158,117,0.45); }
+    #compactTracker.ct-queued { border-color: rgba(83,74,183,0.55); }
+    .ct-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .ct-left { display:flex; align-items:center; gap:8px; }
+    .ct-icon { width:28px; height:28px; border-radius:8px; background:rgba(56,189,248,0.12); display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
+    .ct-status-text { font-size:0.875rem; font-weight:600; color:#f1f5f9; }
+    .ct-tap-hint { font-size:0.7rem; color:#334155; display:flex; align-items:center; gap:3px; }
+    .ct-chevron { width:12px; height:12px; border-right:1.5px solid #475569; border-top:1.5px solid #475569; transform:rotate(45deg); margin-top:1px; }
+    .ct-steps { display:flex; align-items:center; gap:0; }
+    .ct-step { display:flex; flex-direction:column; align-items:center; gap:3px; flex:1; }
+    .ct-dot {
+      width:20px; height:20px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      flex-shrink:0;
+    }
+    .ct-dot-done { background:#0f6e56; border:1.5px solid #1d9e75; }
+    .ct-dot-active { background:#1e3a5f; border:2px solid #38bdf8; }
+    .ct-dot-pending { background:#1e293b; border:1.5px solid #2d3a4a; }
+    .ct-dot-pulse { width:8px; height:8px; border-radius:50%; background:#38bdf8; animation: pulseBlue 1.4s ease-in-out infinite; }
+    .ct-dot-check { width:7px; height:7px; border-right:1.5px solid #9fe1cb; border-bottom:1.5px solid #9fe1cb; transform:rotate(45deg) translate(-1px,-1px); }
+    .ct-dot-pending-inner { width:5px; height:5px; border-radius:50%; background:#2d3a4a; }
+    @keyframes pulseBlue { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(1.3)} }
+    .ct-line { flex:1; height:1.5px; background:#2d3a4a; margin-bottom:10px; }
+    .ct-line-done { background:#1d9e75; }
+    .ct-label { font-size:9px; color:#475569; text-align:center; line-height:1.3; max-width:48px; }
+    .ct-label-active { color:#38bdf8; font-weight:600; }
+    .ct-label-done { color:#1d9e75; }
+    .ct-items { font-size:0.73rem; color:#475569; margin-top:6px; padding-top:6px; border-top:1px solid rgba(148,163,184,0.08); }
+    .ct-modify { font-size:0.72rem; color:#fac775; background:none; border:none; padding:0; cursor:pointer; margin-top:2px; }
+
+    /* ── Delivered toast ── */
+    #deliveredToast {
+      display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%);
+      background:#0f6e56; border:1px solid #1d9e75; border-radius:12px;
+      padding:10px 20px; z-index:500; white-space:nowrap;
+      animation: toastIn 0.3s ease;
+    }
+    #deliveredToast.show { display:block; }
+    .toast-text { font-size:0.9rem; font-weight:600; color:#9fe1cb; }
+    @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(-8px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+
+    /* ── Tracker modal ── */
+    #trackerModal {
+      display:none; position:fixed; inset:0;
+      background:rgba(10,16,30,0.82);
+      z-index:300; align-items:flex-end; justify-content:center;
+      padding:0;
+    }
+    #trackerModal.active { display:flex; }
+    .tracker-sheet {
+      background:#0f172a;
+      border:1px solid rgba(148,163,184,0.18);
+      border-radius:24px 24px 0 0;
+      padding:20px 20px 32px;
+      width:100%; max-width:480px;
+      max-height:85vh; overflow-y:auto;
+    }
+    .sheet-handle { width:40px; height:4px; border-radius:2px; background:#334155; margin:0 auto 16px; }
+    .sheet-title { font-size:0.85rem; color:#64748b; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:16px; }
+    .tracker-steps { display:flex; flex-direction:column; gap:0; }
+    .tracker-step { display:flex; align-items:flex-start; gap:12px; position:relative; }
+    .tracker-step:not(:last-child)::after {
+      content:""; position:absolute; left:13px; top:26px;
+      width:2px; height:calc(100% - 6px); border-radius:1px;
+    }
+    .tracker-step.ts-done::after { background:#1d9e75; }
+    .tracker-step.ts-active::after { background:#334155; }
+    .tracker-step.ts-pending::after { background:#1e293b; }
+    .ts-dot {
+      width:28px; height:28px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      flex-shrink:0; margin-top:1px; z-index:1;
+    }
+    .ts-dot-done { background:#0f6e56; border:2px solid #1d9e75; }
+    .ts-dot-active { background:#1e3a5f; border:2px solid #38bdf8; }
+    .ts-dot-pending { background:#1e293b; border:1.5px solid #2d3a4a; }
+    .ts-check { width:10px; height:10px; border-right:2px solid #9fe1cb; border-bottom:2px solid #9fe1cb; transform:rotate(45deg) translate(-1px,-1px); }
+    .ts-pulse { width:9px; height:9px; border-radius:50%; background:#38bdf8; animation:pulseBlue 1.4s ease-in-out infinite; }
+    .ts-pending-dot { width:6px; height:6px; border-radius:50%; background:#2d3a4a; }
+    .ts-info { padding-bottom:16px; }
+    .ts-name { font-size:0.95rem; font-weight:600; color:#f1f5f9; }
+    .ts-name-muted { color:#334155; }
+    .ts-name-active { color:#38bdf8; }
+    .ts-sub { font-size:0.78rem; color:#64748b; margin-top:2px; }
+    .ts-sub-active { color:#94a3b8; }
+    .sheet-close {
+      width:100%; margin-top:8px; padding:11px;
+      border-radius:12px; border:0.5px solid rgba(148,163,184,0.2);
+      background:transparent; color:#64748b; font-size:0.9rem; cursor:pointer;
+    }
     .hist-card {
       background: rgba(15,23,42,0.35);
       border: 1px solid rgba(148,163,184,0.15);
@@ -168,6 +281,132 @@
       border:1px solid rgba(148,163,184,0.15);
       border-radius:12px; padding:12px 14px; margin-bottom:8px;
     }
+    /* ── Mode toggle ── */
+    .mode-toggle { display:flex; gap:6px; margin-bottom:16px; }
+    .mode-btn {
+      flex:1; padding:9px; border-radius:12px; font-size:0.85rem; font-weight:600;
+      border:1px solid rgba(148,163,184,0.2); background:transparent;
+      color:#64748b; cursor:pointer; transition:all 0.2s;
+    }
+    .mode-btn.active {
+      background:rgba(56,189,248,0.12); border-color:rgba(56,189,248,0.4);
+      color:#38bdf8;
+    }
+
+    /* ── Chat panel ── */
+    #chatPanel { display:none; flex-direction:column; height:calc(100vh - 240px); min-height:400px; }
+    #chatPanel.active { display:flex; }
+    #browsePanel.hidden { display:none; }
+
+    .chat-messages {
+      flex:1; overflow-y:auto; padding:4px 0 12px;
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .chat-messages::-webkit-scrollbar { width:3px; }
+    .chat-messages::-webkit-scrollbar-track { background:transparent; }
+    .chat-messages::-webkit-scrollbar-thumb { background:#334155; border-radius:2px; }
+
+    .msg-row { display:flex; align-items:flex-end; gap:8px; }
+    .msg-row.user { flex-direction:row-reverse; }
+    .msg-avatar {
+      width:28px; height:28px; border-radius:50%; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center;
+      font-size:13px; font-weight:600;
+    }
+    .msg-avatar.temi { background:#0f6e56; color:#9fe1cb; font-size:11px; }
+    .msg-avatar.user-av { background:#1e3a5f; color:#38bdf8; font-size:11px; }
+
+    .bubble {
+      max-width:75%; padding:10px 13px; border-radius:16px;
+      font-size:0.875rem; line-height:1.5;
+    }
+    .bubble.temi {
+      background:rgba(30,41,59,0.9); border:1px solid rgba(148,163,184,0.15);
+      border-radius:4px 16px 16px 16px; color:#e2e8f0;
+    }
+    .bubble.user {
+      background:rgba(14,67,124,0.8); border:1px solid rgba(56,139,221,0.3);
+      border-radius:16px 4px 16px 16px; color:#b5d4f4;
+    }
+    .bubble.thinking {
+      background:rgba(30,41,59,0.6); border:1px solid rgba(148,163,184,0.1);
+      color:#475569; font-style:italic; font-size:0.8rem;
+    }
+
+    /* Typing indicator */
+    .typing-dots { display:flex; gap:4px; align-items:center; padding:4px 0; }
+    .typing-dots span {
+      width:6px; height:6px; border-radius:50%; background:#475569;
+      animation:typingDot 1.2s ease-in-out infinite;
+    }
+    .typing-dots span:nth-child(2) { animation-delay:0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay:0.4s; }
+    @keyframes typingDot { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
+
+    /* Quick reply chips */
+    .quick-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+    .qchip {
+      font-size:0.78rem; padding:5px 12px; border-radius:99px;
+      border:1px solid rgba(56,189,248,0.3); background:rgba(56,189,248,0.06);
+      color:#38bdf8; cursor:pointer; transition:all 0.15s; white-space:nowrap;
+    }
+    .qchip:hover { background:rgba(56,189,248,0.12); border-color:rgba(56,189,248,0.5); }
+
+    /* Confirmation card inside bubble */
+    .confirm-card {
+      background:rgba(15,23,42,0.6); border:1px solid rgba(148,163,184,0.15);
+      border-radius:10px; padding:10px 12px; margin-top:8px;
+    }
+    .confirm-card-title { font-size:0.78rem; color:#64748b; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.06em; }
+    .confirm-card-items { font-size:0.85rem; color:#e2e8f0; margin-bottom:10px; line-height:1.8; }
+    .confirm-btns { display:flex; gap:8px; }
+    .confirm-btn-yes {
+      flex:1; padding:8px; border-radius:8px; border:none; font-size:0.82rem;
+      font-weight:600; background:linear-gradient(135deg,#0ea5e9,#7c3aed);
+      color:#fff; cursor:pointer;
+    }
+    .confirm-btn-no {
+      padding:8px 14px; border-radius:8px; font-size:0.82rem;
+      border:1px solid rgba(148,163,184,0.2); background:transparent;
+      color:#64748b; cursor:pointer;
+    }
+
+    /* Out of stock card */
+    .oos-card {
+      background:rgba(163,45,45,0.08); border:1px solid rgba(163,45,45,0.25);
+      border-radius:10px; padding:10px 12px; margin-top:8px;
+    }
+    .oos-title { font-size:0.78rem; color:#f09595; margin-bottom:6px; }
+    .oos-available { font-size:0.82rem; color:#e2e8f0; margin-bottom:8px; line-height:1.7; }
+
+    /* Chat input */
+    .chat-input-row {
+      display:flex; gap:8px; padding-top:10px;
+      border-top:1px solid rgba(148,163,184,0.1); margin-top:4px;
+    }
+    #chatInput {
+      flex:1; background:rgba(15,23,42,0.6); border:1px solid rgba(148,163,184,0.2);
+      border-radius:12px; padding:10px 14px; font-size:0.875rem;
+      color:#e2e8f0; outline:none; resize:none; max-height:80px;
+    }
+    #chatInput::placeholder { color:#334155; }
+    #chatInput:focus { border-color:rgba(56,189,248,0.4); }
+    #btnSendChat {
+      width:42px; height:42px; border-radius:12px; border:none; flex-shrink:0;
+      background:linear-gradient(135deg,#0ea5e9,#7c3aed); cursor:pointer;
+      display:flex; align-items:center; justify-content:center; align-self:flex-end;
+    }
+    #btnSendChat:disabled { opacity:0.4; cursor:not-allowed; }
+    #btnSendChat svg { width:16px; height:16px; fill:white; }
+
+    /* Agent badge */
+    .agent-badge {
+      font-size:9px; padding:1px 6px; border-radius:99px; margin-left:4px;
+      display:inline-block; vertical-align:middle;
+    }
+    .badge-chat { background:rgba(29,158,117,0.2); color:#1d9e75; }
+    .badge-plan { background:rgba(124,58,237,0.2); color:#a78bfa; }
+    .badge-guard { background:rgba(163,45,45,0.2); color:#f09595; }
     .history-toggle-row {
       cursor:pointer; padding:14px 0;
       display:flex; justify-content:space-between; align-items:center;
@@ -193,39 +432,89 @@
       <p id="introVoiceHint" class="mb-0 mt-2 small text-info d-none" aria-live="polite"></p>
     </div>
 
-    <!-- Active order status bar -->
-    <div id="topStatusBar" class="mb-4"></div>
-
-    <div id="editOrderBanner" class="alert border mb-3 d-none" role="status">
-      <span id="editOrderBannerText"></span>
+    <!-- Mode toggle -->
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="btnBrowseMode" onclick="switchMode('browse')">🛒 Browse catalog</button>
+      <button class="mode-btn" id="btnChatMode" onclick="switchMode('chat')">💬 Chat to order</button>
     </div>
 
-    <p class="section-label">Beverages</p>
-    <div id="rowBeverages" class="row g-3 mb-4"></div>
-
-    <p class="section-label">Snacks (Living Labs rack)</p>
-    <div id="rowSnacks" class="row g-3 mb-3"></div>
-
-    <!-- History section -->
-    <div id="historySection" class="mt-2 mb-5">
-      <div class="history-toggle-row" onclick="toggleHistory()">
-        <p class="section-label mb-0">
-          Past orders <span id="historyCount" style="color:#64748b;text-transform:none;letter-spacing:0"></span>
-        </p>
-        <span id="historyArrow" style="color:#64748b;font-size:0.8rem">▼</span>
+    <!-- Chat panel -->
+    <div id="chatPanel">
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-input-row">
+        <textarea id="chatInput" rows="1" placeholder="Ask Temi anything to order..."></textarea>
+        <button id="btnSendChat" disabled>
+          <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+        </button>
       </div>
-      <div id="historyBody" style="display:none">
-        <div class="d-flex gap-2 mb-3 mt-2">
-          <button class="btn btn-sm btn-outline-info active" id="htabRecent"
-            onclick="switchHistoryTab('recent')">Recent</button>
-          <button class="btn btn-sm btn-outline-info" id="htabReorder"
-            onclick="switchHistoryTab('reorder')">Order again</button>
+    </div>
+
+    <!-- Browse panel -->
+    <div id="browsePanel">
+
+      <!-- Compact tracker bar (shown only when active order exists) -->
+      <div id="compactTracker" onclick="openTrackerModal()" style="display:none">
+        <div class="ct-top">
+          <div class="ct-left">
+            <div class="ct-icon" id="ctIcon">🛵</div>
+            <span class="ct-status-text" id="ctStatusText">Order placed</span>
+          </div>
+          <div class="ct-tap-hint"><span id="ctTapHint">Details</span><div class="ct-chevron"></div></div>
         </div>
-        <div id="historyRecent"></div>
-        <div id="historyReorder" style="display:none"></div>
+        <div class="ct-steps" id="ctSteps"></div>
+        <div class="ct-items" id="ctItems"></div>
       </div>
-    </div>
-  </div>
+
+      <!-- Delivered toast -->
+      <div id="deliveredToast"><span class="toast-text">✓ Order delivered!</span></div>
+
+      <!-- Tracker modal (bottom sheet) -->
+      <div id="trackerModal" onclick="closeTrackerModal(event)">
+        <div class="tracker-sheet">
+          <div class="sheet-handle"></div>
+          <div class="sheet-title">Order tracking</div>
+          <div class="tracker-steps" id="trackerSteps"></div>
+          <div id="trackerItemsRow" style="font-size:0.8rem;color:#64748b;margin:12px 0 8px;padding-top:12px;border-top:1px solid rgba(148,163,184,0.1)"></div>
+          <div id="trackerModifyRow"></div>
+          <button class="sheet-close" onclick="closeTrackerModal()">Close</button>
+        </div>
+      </div>
+
+      <!-- Legacy status bar (kept for cancel notice) -->
+      <div id="topStatusBar" class="mb-2"></div>
+
+      <div id="editOrderBanner" class="alert border mb-3 d-none" role="status">
+        <span id="editOrderBannerText"></span>
+      </div>
+
+      <p class="section-label">Beverages</p>
+      <div id="rowBeverages" class="row g-3 mb-4"></div>
+
+      <p class="section-label">Snacks (Living Labs rack)</p>
+      <div id="rowSnacks" class="row g-3 mb-3"></div>
+
+      <!-- History section -->
+      <div id="historySection" class="mt-2 mb-5">
+        <div class="history-toggle-row" onclick="toggleHistory()">
+          <p class="section-label mb-0">
+            Past orders <span id="historyCount" style="color:#64748b;text-transform:none;letter-spacing:0"></span>
+          </p>
+          <span id="historyArrow" style="color:#64748b;font-size:0.8rem">▼</span>
+        </div>
+        <div id="historyBody" style="display:none">
+          <div class="d-flex gap-2 mb-3 mt-2">
+            <button class="btn btn-sm btn-outline-info active" id="htabRecent"
+              onclick="switchHistoryTab('recent')">Recent</button>
+            <button class="btn btn-sm btn-outline-info" id="htabReorder"
+              onclick="switchHistoryTab('reorder')">Order again</button>
+          </div>
+          <div id="historyRecent"></div>
+          <div id="historyReorder" style="display:none"></div>
+        </div>
+      </div>
+
+    </div> <!-- end browsePanel -->
+  </div> <!-- end container -->
 
   <div class="submit-bar">
     <div class="container d-flex align-items-center justify-content-between gap-3">
@@ -248,7 +537,13 @@
     <div class="state-card app-dialog-card" id="appDialogCard">
       <h2 id="appDialogTitle" class="h6 mb-2" style="letter-spacing:0.06em;color:#f1f5f9;">Notice</h2>
       <p id="appDialogBody" class="mb-4"></p>
-      <button type="button" class="btn btn-submit text-white w-100" id="appDialogOk">OK</button>
+      <button type="button" class="btn btn-submit text-white w-100" id="appDialogOk" style="padding:14px;font-size:1rem;border-radius:12px">OK</button>
+      <button type="button" class="btn w-100 mt-2" id="appDialogCancel"
+        style="display:none;padding:12px;font-size:0.9rem;border-radius:12px;
+               border:1px solid rgba(148,163,184,0.25);color:#94a3b8;
+               background:transparent">
+        Cancel
+      </button>
     </div>
   </div>
 
@@ -261,10 +556,13 @@
     let db = null;
 
     const firebaseConfig = {
-      apiKey: "AIzaSyCTOREQwSXlET_OH764k5bbwo4hn_GtvHA",
-      authDomain: "temi-beverage-delivery.firebaseapp.com",
-      databaseURL: "https://temi-beverage-delivery-default-rtdb.firebaseio.com",
-      projectId: "temi-beverage-delivery",
+      apiKey: "AIzaSyD9dFxNB6zdl9ZKerok3XqzhzDvuODbifM",
+      authDomain: "temi-beverage-delivery-dev.firebaseapp.com",
+      databaseURL: "https://temi-beverage-delivery-dev-default-rtdb.firebaseio.com",
+      projectId: "temi-beverage-delivery-dev",
+      storageBucket: "temi-beverage-delivery-dev.firebasestorage.app",
+      messagingSenderId: "680311210831",
+      appId: "1:680311210831:web:1903f9e7f6f721328dfb3a",
     };
 
     const INTRO_TEXT = "Hi ! welcome to the Temi Butler Service. Please choose the beverages and snacks you would like to order";
@@ -288,7 +586,38 @@
       overlay.onclick = (ev) => { if (ev.target === overlay) close(); };
     }
 
-    // ── Voice system ──
+    // ── App confirm (promise-based, reuses appDialog) ──
+    function showAppConfirm(title, message) {
+      return new Promise(resolve => {
+        const overlay = el("appDialog");
+        const titleEl = el("appDialogTitle");
+        const bodyEl = el("appDialogBody");
+        const okBtn = el("appDialogOk");
+        const cancelBtn = el("appDialogCancel");
+        if (!overlay || !titleEl || !bodyEl || !okBtn) { resolve(window.confirm(message)); return; }
+        titleEl.textContent = title || "Confirm";
+        bodyEl.textContent = message || "";
+        overlay.classList.add("app-dialog--info");
+        overlay.classList.add("active");
+        okBtn.textContent = "Continue";
+        cancelBtn.style.display = "";
+        const close = (result) => {
+          overlay.classList.remove("active");
+          overlay.onclick = null;
+          okBtn.onclick = null;
+          cancelBtn.onclick = null;
+          cancelBtn.style.display = "none";
+          okBtn.textContent = "OK";
+          resolve(result);
+        };
+        okBtn.onclick = () => close(true);
+        cancelBtn.onclick = () => close(false);
+        overlay.onclick = (ev) => { if (ev.target === overlay) close(false); };
+        try { okBtn.focus(); } catch {}
+      });
+    }
+
+
     function showIntroTextBanner() {
       const banner = el("introBanner"); const textEl = el("introBannerText");
       if (banner && textEl) { textEl.textContent = INTRO_TEXT; banner.classList.remove("d-none"); }
@@ -468,18 +797,137 @@
       return Object.keys(items).filter((k) => items[k] > 0).map((k) => { const name = inventory[k]?.name || k; return `${name} ×${items[k]}`; }).join(", ");
     }
 
-    // ── Status bar ──
+    // ── Tracker helpers ──
+    const TRACKER_STAGES = [
+      { key: "placed",    label: "Placed",    sub: "Order received" },
+      { key: "confirmed", label: "Confirmed", sub: "Round closed" },
+      { key: "loading",   label: "Loading",   sub: "Temi at pantry" },
+      { key: "on_the_way",label: "On the way",sub: "Heading to gaming zone" },
+      { key: "arrived",   label: "Arrived",   sub: "Temi at gaming zone" },
+      { key: "delivered", label: "Delivered", sub: "Collect & press OK" },
+    ];
+
+    function getActiveStageIndex(rStatus, rId) {
+      const isDelivering = rId && rId === currentDeliveringRound;
+      if (rStatus === "done") return 5;
+      if (isDelivering && robotState === "arrived_gaming")  return 4;
+      if (isDelivering && robotState === "arrived_pantry")  return 2;
+      if (isDelivering || rStatus === "locked" || rStatus === "delivering") return 3;
+      if (rStatus === "closed")  return 1;
+      return 0; // open
+    }
+
+    function getTrackerClass(rStatus, rId) {
+      const idx = getActiveStageIndex(rStatus, rId);
+      if (idx === 4) return "ct-arrived";
+      if (idx === 3) return "ct-moving";
+      if (idx === 1) return "ct-queued";
+      return "ct-open";
+    }
+
+    function getStatusText(rStatus, rId) {
+      const idx = getActiveStageIndex(rStatus, rId);
+      const labels = [
+        "Order received — collecting soon",
+        "Confirmed — Temi coming",
+        "Loading onto Temi",
+        "Temi is on the way!",
+        "Temi is here! Collect now",
+        "Delivered"
+      ];
+      return labels[idx] || "Order placed";
+    }
+
+    function renderCompactSteps(activeIdx) {
+      const stepsEl = el("ctSteps"); if (!stepsEl) return;
+      let html = "";
+      TRACKER_STAGES.forEach((s, i) => {
+        const done = i < activeIdx;
+        const active = i === activeIdx;
+        const dotClass = done ? "ct-dot-done" : active ? "ct-dot-active" : "ct-dot-pending";
+        const inner = done
+          ? `<div class="ct-dot-check"></div>`
+          : active
+          ? `<div class="ct-dot-pulse"></div>`
+          : `<div class="ct-dot-pending-inner"></div>`;
+        const labelClass = done ? "ct-label-done" : active ? "ct-label-active" : "";
+        const lineClass = done ? "ct-line ct-line-done" : "ct-line";
+        if (i > 0) html += `<div class="${lineClass}"></div>`;
+        html += `<div class="ct-step">
+          <div class="ct-dot ${dotClass}">${inner}</div>
+          <div class="ct-label ${labelClass}">${s.label}</div>
+        </div>`;
+      });
+      stepsEl.innerHTML = html;
+    }
+
+    function renderTrackerModal(activeIdx, itemsText, rId, canModify, canCancel) {
+      const stepsEl = el("trackerSteps"); if (!stepsEl) return;
+      let html = "";
+      TRACKER_STAGES.forEach((s, i) => {
+        const done = i < activeIdx;
+        const active = i === activeIdx;
+        const stepClass = done ? "ts-done" : active ? "ts-active" : "ts-pending";
+        const dotClass = done ? "ts-dot-done" : active ? "ts-dot-active" : "ts-dot-pending";
+        const inner = done
+          ? `<div class="ts-check"></div>`
+          : active
+          ? `<div class="ts-pulse"></div>`
+          : `<div class="ts-pending-dot"></div>`;
+        const nameClass = done ? "" : active ? "ts-name-active" : "ts-name-muted";
+        const subClass = active ? "ts-sub-active" : "";
+        html += `<div class="tracker-step ${stepClass}">
+          <div class="ts-dot ${dotClass}">${inner}</div>
+          <div class="ts-info">
+            <div class="ts-name ${nameClass}">${s.label}</div>
+            <div class="ts-sub ${subClass}">${s.sub}</div>
+          </div>
+        </div>`;
+      });
+      stepsEl.innerHTML = html;
+      const itemsRow = el("trackerItemsRow");
+      if (itemsRow) itemsRow.textContent = itemsText ? "Items: " + itemsText : "";
+      const modifyRow = el("trackerModifyRow");
+      if (modifyRow) {
+        let btns = "";
+        if (canModify) {
+          btns += `<button class="ct-modify" onclick="modifyRoundOrders('${rId}');closeTrackerModal()">✏ Modify order</button>`;
+        }
+        if (canCancel) {
+          btns += `<button class="ct-modify" style="color:#f09595;margin-left:${canModify?'12px':'0'}" onclick="cancelMyOrder('${rId}');closeTrackerModal()">✕ Cancel order</button>`;
+        }
+        modifyRow.innerHTML = btns;
+      }
+    }
+
+    window.openTrackerModal = function() {
+      el("trackerModal").classList.add("active");
+    };
+    window.closeTrackerModal = function(e) {
+      if (!e || e.target === el("trackerModal")) {
+        el("trackerModal").classList.remove("active");
+      }
+    };
+
+    function getStageIcon(idx) {
+      return ["📋","✅","📦","🛵","🎉","✓"][idx] || "📋";
+    }
+
+    // ── Status bar (compact tracker) ──
     function renderStatusBar() {
-      const topBar = el("topStatusBar"); if (!topBar) return;
-      topBar.innerHTML = "";
+      const tracker = el("compactTracker"); if (!tracker) return;
 
       const activeOrders = myOrders.filter(o => {
         const st = (o.status || "pending").toLowerCase();
         return !["complete","delivered","cancelled","canceled"].includes(st);
       });
-      if (activeOrders.length === 0) return;
 
-      // Group by roundId — one card per round
+      if (activeOrders.length === 0) {
+        tracker.style.display = "none";
+        return;
+      }
+
+      // Use highest priority round
       const roundGroups = {};
       activeOrders.forEach(o => {
         const rId = o.roundId || "no-round";
@@ -487,75 +935,75 @@
         roundGroups[rId].push(o);
       });
 
-      const cards = Object.entries(roundGroups).map(([rId, groupOrders]) => {
-        const rd = rId !== "no-round" ? (allRounds[rId] || {}) : {};
-        const rStatus = (rd.status || "open").toLowerCase();
+      // Pick delivering round first, else first group
+      let rId = Object.keys(roundGroups).find(id => id === currentDeliveringRound)
+        || Object.keys(roundGroups)[0];
+      const groupOrders = roundGroups[rId];
+      const rd = rId !== "no-round" ? (allRounds[rId] || {}) : {};
+      const rStatus = (rd.status || "open").toLowerCase();
 
-        // Merge all items in this group
-        const mergedItems = {};
-        groupOrders.forEach(o => {
-          Object.entries(o.items || {}).forEach(([sku, qty]) => {
-            mergedItems[sku] = (mergedItems[sku] || 0) + Number(qty);
-          });
+      const mergedItems = {};
+      groupOrders.forEach(o => {
+        Object.entries(o.items || {}).forEach(([sku, qty]) => {
+          mergedItems[sku] = (mergedItems[sku] || 0) + Number(qty);
         });
-        const itemsText = Object.entries(mergedItems)
-          .filter(([, q]) => q > 0)
-          .map(([sku, q]) => (inventory[sku]?.name || sku) + " ×" + q)
-          .join(", ");
+      });
+      const itemsText = Object.entries(mergedItems)
+        .filter(([, q]) => q > 0)
+        .map(([sku, q]) => (inventory[sku]?.name || sku) + " ×" + q)
+        .join(", ");
 
-        // Determine state
-        let stateClass, icon, title, subtitle, priority;
-        const isDelivering = rId !== "no-round" && rId === currentDeliveringRound;
+      const activeIdx = getActiveStageIndex(rStatus, rId);
+      const canModify = rStatus === "open";
+      const canCancel = rStatus === "open" || rStatus === "closed";
 
-        if (isDelivering && robotState === "arrived_gaming") {
-          stateClass = "state-arrived"; icon = "🎉"; priority = 4;
-          title = "Temi is here!";
-          subtitle = "Collect your order and press OK on Temi's screen";
-        } else if (isDelivering && robotState === "arrived_pantry") {
-          stateClass = "state-pantry"; icon = "🤖"; priority = 3;
-          title = "Almost there";
-          subtitle = "Loading your order onto Temi now";
-        } else if (isDelivering || rStatus === "locked" || rStatus === "delivering") {
-          stateClass = "state-moving"; icon = "🤖"; priority = 3;
-          title = "Temi is on the way!";
-          subtitle = "Head to the gaming zone now";
-        } else if (rStatus === "closed") {
-          stateClass = "state-queued"; icon = "⏳"; priority = 2;
-          title = "Your order is confirmed";
-          subtitle = "Too late to modify — Temi is collecting soon";
-        } else {
-          stateClass = "state-open"; icon = "✓"; priority = 1;
-          title = "Order received";
-          subtitle = "Temi will collect your order shortly";
+      if (activeIdx === 5) {
+        tracker.style.display = "none";
+        const toast = el("deliveredToast");
+        if (toast && !toast.classList.contains("show")) {
+          toast.classList.add("show");
+          setTimeout(() => { toast.classList.remove("show"); }, 4000);
         }
+        renderTrackerModal(activeIdx, itemsText, rId, false, false);
+        return;
+      }
 
-        const canModify = rStatus === "open";
-        return { stateClass, icon, title, subtitle, priority, itemsText, rId, canModify };
-      });
+      // Update compact bar
+      tracker.className = "";
+      tracker.classList.add(getTrackerClass(rStatus, rId));
+      tracker.style.display = "block";
+      el("ctStatusText").textContent = getStatusText(rStatus, rId);
+      el("ctItems").textContent = itemsText;
+      const iconEl = el("ctIcon");
+      if (iconEl) iconEl.textContent = getStageIcon(activeIdx);
+      const extras = Object.keys(roundGroups).length - 1;
+      const hintEl = el("ctTapHint");
+      if (hintEl) hintEl.textContent = extras > 0 ? `+${extras} more · Details` : "Details";
+      renderCompactSteps(activeIdx);
 
-      cards.sort((a, b) => b.priority - a.priority);
-      const total = cards.length;
+      // Show action buttons directly on tracker bar when cancellable/modifiable
+      let ctActionsEl = el("ctActions");
+      if (!ctActionsEl) {
+        ctActionsEl = document.createElement("div");
+        ctActionsEl.id = "ctActions";
+        ctActionsEl.style.cssText = "display:flex;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(148,163,184,0.08)";
+        tracker.appendChild(ctActionsEl);
+      }
+      if (canCancel || canModify) {
+        ctActionsEl.style.display = "flex";
+        ctActionsEl.innerHTML = (canModify
+          ? `<button onclick="event.stopPropagation();modifyRoundOrders('${rId}')" style="flex:1;padding:7px;border-radius:8px;border:1px solid rgba(56,189,248,0.3);background:rgba(56,189,248,0.08);color:#38bdf8;font-size:0.78rem;cursor:pointer">✏ Modify</button>`
+          : "") +
+          (canCancel
+          ? `<button onclick="event.stopPropagation();cancelMyOrder('${rId}')" style="flex:1;padding:7px;border-radius:8px;border:1px solid rgba(248,113,113,0.3);background:rgba(248,113,113,0.08);color:#f87171;font-size:0.78rem;cursor:pointer">✕ Cancel order</button>`
+          : "");
+      } else {
+        ctActionsEl.style.display = "none";
+        ctActionsEl.innerHTML = "";
+      }
 
-      cards.forEach((card, index) => {
-        const div = document.createElement("div");
-        div.className = "status-card " + card.stateClass;
-        const labelHTML = total > 1
-          ? `<div class="status-order-label">Delivery ${index + 1} of ${total}</div>`
-          : "";
-        const modifyBtn = card.canModify
-          ? `<button class="btn btn-sm btn-outline-warning mt-2"
-               style="font-size:0.78rem;padding:4px 12px"
-               onclick="modifyRoundOrders('${card.rId}')">
-               Modify order
-             </button>`
-          : "";
-        div.innerHTML = labelHTML +
-          `<div class="status-title">${card.icon} ${card.title}</div>` +
-          `<div class="status-subtitle">${card.subtitle}</div>` +
-          (card.itemsText ? `<div class="status-items">${card.itemsText}</div>` : "") +
-          modifyBtn;
-        topBar.appendChild(div);
-      });
+      // Pre-render modal content
+      renderTrackerModal(activeIdx, itemsText, rId, canModify, canCancel);
     }
 
     // ── Modify round orders ──
@@ -575,7 +1023,11 @@
         return;
       }
 
-      if (!confirm("This will cancel your current order so you can resubmit with changes. Continue?")) return;
+      const proceed = await showAppConfirm(
+        "Modify order",
+        "This will cancel your current selection so you can resubmit with changes. Your items will be pre-filled in the cart."
+      );
+      if (!proceed) return;
 
       // Merge all items into one object for cart pre-fill
       const mergedItems = {};
@@ -625,6 +1077,78 @@
       updateCartUi();
       renderCatalog();
       el("rowBeverages")?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    // ── Cancel my order from tracker UI ──
+    window.cancelMyOrder = async function(roundId) {
+      if (!db) return;
+
+      const myRoundOrders = myOrders.filter(o =>
+        o.roundId === roundId &&
+        !["complete","delivered","cancelled","canceled"].includes((o.status||"").toLowerCase())
+      );
+      if (!myRoundOrders.length) {
+        showAppDialog("No cancellable orders found in this round.", { title: "Nothing to cancel", variant: "info" });
+        return;
+      }
+
+      // Double check round is still cancellable
+      const rd = allRounds[roundId] || {};
+      if (["locked","delivering","done"].includes(rd.status)) {
+        showAppDialog("Cannot cancel — Temi has already started the trip.", { title: "Too late", variant: "info" });
+        return;
+      }
+
+      const itemsText = myRoundOrders.map(o =>
+        Object.entries(o.items||{}).filter(([,q])=>q>0)
+          .map(([sku,q])=>(inventory[sku]?.name||sku)+" ×"+q).join(", ")
+      ).join("; ");
+
+      const proceed = await showAppConfirm(
+        "Cancel order",
+        `Cancel your order (${itemsText})? Stock will be returned.`
+      );
+      if (!proceed) return;
+
+      // Cancel each order and return stock
+      for (const order of myRoundOrders) {
+        try {
+          const updates = {};
+          updates[`orders/${order.id}/status`] = "cancelled";
+          updates[`orders/${order.id}/cancelledAt`] = serverTimestamp();
+          // Return stock
+          Object.entries(order.items||{}).forEach(([sku, qty]) => {
+            if (inventory[sku]) {
+              const cur = Number(inventory[sku].quantity)||0;
+              updates[`inventory/${sku}/quantity`] = cur + Number(qty);
+              inventory[sku].quantity = cur + Number(qty);
+            }
+          });
+          // Remove from round
+          updates[`rounds/${roundId}/orderIds/${order.id}`] = null;
+          await update(ref(db, "/"), updates);
+          // Remove from localStorage queue
+          saveOrderQueue(loadOrderQueue().filter(id => id !== order.id));
+        } catch(e) {
+          console.error("Cancel order error:", e);
+          showAppDialog("Failed to cancel: " + e.message, { title: "Error", variant: "error" });
+          return;
+        }
+      }
+
+      // Update round manifest
+      await runTransaction(ref(db, "rounds/" + roundId), rd => {
+        if (!rd) return rd;
+        rd.activeOrderCount = Math.max(0, (rd.activeOrderCount||0) - myRoundOrders.length);
+        myRoundOrders.forEach(o => {
+          Object.entries(o.items||{}).forEach(([sku,qty]) => {
+            if (rd.itemManifest) rd.itemManifest[sku] = Math.max(0, (rd.itemManifest[sku]||0) - Number(qty));
+          });
+        });
+        return rd;
+      });
+
+      renderCatalog();
     };
 
     // ── History UI ──
@@ -748,25 +1272,105 @@
       }
     };
 
+    // ── Stale queue cleanup (runs on page load) ──
+    async function cleanStaleQueue() {
+      if (!db) return;
+      const queue = loadOrderQueue();
+      if (queue.length === 0) return;
+      for (const orderId of [...queue]) {
+        try {
+          const snap = await get(ref(db, "orders/" + orderId));
+          const data = snap.val();
+          if (!data) {
+            // Order deleted from Firebase — just remove from queue
+            saveOrderQueue(loadOrderQueue().filter(id => id !== orderId));
+            continue;
+          }
+          const st = (data.status || "").toLowerCase();
+          if (["complete", "delivered"].includes(st)) {
+            saveOrderQueue(loadOrderQueue().filter(id => id !== orderId));
+            archiveOrder(orderId, data, "complete");
+          }
+          if (["cancelled", "canceled"].includes(st)) {
+            saveOrderQueue(loadOrderQueue().filter(id => id !== orderId));
+            archiveOrder(orderId, data, "cancelled");
+          }
+        } catch (e) {
+          console.error("Stale queue check failed for", orderId, e);
+        }
+      }
+    }
+
+    // Track orders that are already showing a cancel notice
+    // so we don't show it twice
+    const cancelNoticeShown = new Set();
+
+    function showCancelNotice(orderId, data) {
+      if (cancelNoticeShown.has(orderId)) return;
+      cancelNoticeShown.add(orderId);
+
+      const topBar = el("topStatusBar");
+      if (!topBar) {
+        // No status bar visible — just archive immediately
+        saveOrderQueue(loadOrderQueue().filter(id => id !== orderId));
+        archiveOrder(orderId, data, "cancelled");
+        return;
+      }
+
+      const notice = document.createElement("div");
+      notice.className = "status-card";
+      notice.style.borderColor = "rgba(163,45,45,0.5)";
+      notice.style.background = "rgba(163,45,45,0.08)";
+      const itemsText = Object.entries(data.items || {})
+        .filter(([, q]) => Number(q) > 0)
+        .map(([sku, q]) => (inventory[sku]?.name || sku) + " ×" + q)
+        .join(", ");
+      notice.innerHTML =
+        `<div class="status-title" style="color:#f09595">✗ Order cancelled</div>` +
+        `<div class="status-subtitle">This order was cancelled. Stock has been returned.</div>` +
+        (itemsText ? `<div class="status-items">${itemsText}</div>` : "");
+      topBar.prepend(notice);
+
+      // After 4 seconds move to history
+      setTimeout(() => {
+        notice.remove();
+        saveOrderQueue(loadOrderQueue().filter(id => id !== orderId));
+        archiveOrder(orderId, data, "cancelled");
+        renderStatusBar();
+      }, 4000);
+    }
+
     // ── Firebase listeners ──
     function startActiveListeners(db) {
       if (ordersUnsubscribe) return;
+
+      // Clean up stale localStorage entries on page load
+      cleanStaleQueue();
+
       ordersUnsubscribe = onValue(ref(db, "orders"), (snap) => {
         const rows = [];
         snap.forEach((child) => {
           const data = child.val();
           if (data && isMyOrder(child.key, data)) {
-            rows.push({ id: child.key, ...data });
-            // Archive completed/cancelled
             const st = (data.status || "").toLowerCase();
             const queue = loadOrderQueue();
+
             if (["complete", "delivered"].includes(st) && queue.includes(child.key)) {
+              // Completed — archive silently
               saveOrderQueue(queue.filter(id => id !== child.key));
               archiveOrder(child.key, data, "complete");
+              return; // don't add to active rows
             }
+
             if (["cancelled", "canceled"].includes(st) && queue.includes(child.key)) {
-              saveOrderQueue(queue.filter(id => id !== child.key));
-              archiveOrder(child.key, data, "cancelled");
+              // Cancelled — show notice for 4s then archive
+              showCancelNotice(child.key, data);
+              return; // don't add to active rows
+            }
+
+            // Active order — add to rows
+            if (!["complete","delivered","cancelled","canceled"].includes(st)) {
+              rows.push({ id: child.key, ...data });
             }
           }
         });
@@ -1014,6 +1618,1087 @@
 
     renderHistorySection();
     updateCartUi();
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── MULTI-AGENT AI SYSTEM ──
+    // Architecture: Guardrail (JS) → Supervisor → Order/Status/Recommend
+    // ═══════════════════════════════════════════════════════════════
+
+    const GEMINI_API_KEY = "AQ.Ab8RN6JdnOhg_hcmp5pR5RGDD776qO5lpb_EJxqCtrBCOtQ_HQ";
+    const GEMINI_MODEL_SUPERVISOR = "gemini-2.5-flash-lite";  // fast + cheap for routing
+    const GEMINI_MODEL_SPECIALIST = "gemini-flash-latest";    // capable for tool use
+    const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models/";
+    const mkUrl = m => GEMINI_BASE + m + ":generateContent?key=" + GEMINI_API_KEY;
+
+    // ── Agent state ──
+    let chatHistory = [];
+    let agentBusy = false;
+    let idleTimer = null;
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── MODE SWITCH ──
+    // ═══════════════════════════════════════════════════════════════
+    window.switchMode = function(mode) {
+      const chatPanel = el("chatPanel");
+      const browsePanel = el("browsePanel");
+      const btnBrowse = el("btnBrowseMode");
+      const btnChat = el("btnChatMode");
+      if (mode === "chat") {
+        chatPanel.classList.add("active");
+        browsePanel.classList.add("hidden");
+        btnChat.classList.add("active");
+        btnBrowse.classList.remove("active");
+        el("chatInput").focus();
+        if (chatHistory.length === 0) initChat();
+      } else {
+        chatPanel.classList.remove("active");
+        browsePanel.classList.remove("hidden");
+        btnBrowse.classList.add("active");
+        btnChat.classList.remove("active");
+      }
+    };
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── GEMINI API LAYER ──
+    // ═══════════════════════════════════════════════════════════════
+    async function geminiCall(model, systemInstruction, contents, tools = null) {
+      const body = {
+        systemInstruction: { parts: [{ text: systemInstruction }] },
+        contents,
+        generationConfig: { maxOutputTokens: 512, temperature: 0.2 }
+      };
+      if (tools && tools.length > 0) {
+        body.tools = [{ functionDeclarations: tools }];
+        body.toolConfig = { functionCallingConfig: { mode: "AUTO" } };
+      }
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 25000);
+      let res;
+      try {
+        res = await fetch(mkUrl(model), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          signal: controller.signal
+        });
+      } catch(e) {
+        clearTimeout(timeout);
+        if (e.name === "AbortError") throw new Error("Request timed out — please try again.");
+        throw new Error("Network error: " + e.message);
+      }
+      clearTimeout(timeout);
+      if (!res.ok) {
+        let d = "";
+        try { const j = await res.json(); d = JSON.stringify(j).slice(0, 300); } catch {}
+        throw new Error(`Gemini ${res.status}: ${d}`);
+      }
+      const data = await res.json();
+      const candidate = data.candidates?.[0];
+      if (!candidate) throw new Error("No Gemini response: " + JSON.stringify(data).slice(0,150));
+      return candidate.content;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── STATE HELPERS ──
+    // ═══════════════════════════════════════════════════════════════
+    function compressedInventory() {
+      const av = [], oos = [];
+      Object.entries(inventory).forEach(([sku, item]) => {
+        const total = Number(item.quantity) || 0;
+        const inCart = Number(cart[sku]) || 0;
+        const rem = Math.max(0, total - inCart);
+        if (rem > 0) av.push(`${item.name}(stock:${total},add_more:${rem},sku:${sku})`);
+        else if (total > 0 && inCart >= total) av.push(`${item.name}(max_in_cart,sku:${sku})`);
+        else oos.push(item.name);
+      });
+      return "Available: " + av.join("; ") + (oos.length ? " | OOS: " + oos.join(", ") : "");
+    }
+
+    function cartSummaryForAgent() {
+      const e = Object.entries(cart).filter(([,q]) => Number(q) > 0);
+      if (!e.length) return "empty";
+      return e.map(([sku,q]) => (inventory[sku]?.name||sku) + " x" + Number(q)).join(", ");
+    }
+
+    function historySummaryForAgent() {
+      const h = loadOrderHistory();
+      if (!h.length) return "No previous orders.";
+      const last = h[0];
+      const items = Object.entries(last.items||{}).filter(([,q])=>q>0)
+        .map(([sku,q])=>(last.itemNames?.[sku]||sku)+" x"+q).join(", ");
+      return `Last order: ${items}. Total orders: ${h.length}.`;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── LAYER 1: GUARDRAIL (pure JS — zero API calls) ──
+    // ═══════════════════════════════════════════════════════════════
+    const ORDER_KEYWORDS = [
+      "order","add","cart","buy","get","want","need","give","drink","eat",
+      "available","menu","have","chips","coffee","tea","coke","water","juice",
+      "chocolate","cookies","nuts","snack","beverage","food","cancel","status",
+      "where","deliver","track","same","last","time","suggest","recommend",
+      "surprise","people","group","reorder","submit","place","confirm","yes",
+      "remove","clear","what","how","much","stock","left","bottle"
+    ];
+    function guardrail(text) {
+      const t = text.toLowerCase();
+      return ORDER_KEYWORDS.some(k => t.includes(k)) || t.length < 12;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── LAYER 2: SUPERVISOR AGENT (gemini-flash-lite) ──
+    // Routes to: order | status | recommend
+    // ═══════════════════════════════════════════════════════════════
+    const SUPERVISOR_PROMPT = `You are a router. Classify the user message into exactly one category.
+Reply with ONLY one word — nothing else.
+
+Categories:
+- order: adding items to cart, removing items from cart, clearing cart, submitting order, confirming order placement, checking what is available, placing order
+- status: checking order status, tracking delivery, WHERE IS MY ORDER, cancelling an order, CANCEL, asking where Temi is, order arrived, how long
+- recommend: asking for suggestions, "surprise me", "same as last time", "drinks for N people", reorder requests
+
+CRITICAL routing rules:
+- Any message containing "cancel" → ALWAYS status
+- Any message containing "modify" or "change my order" or "update my order" → ALWAYS status
+- Any message containing "where is my order" → ALWAYS status  
+- Any message containing "status" or "track" → ALWAYS status
+- "yes" or "confirm" AFTER a cancel question → ALWAYS status
+- Any message containing "suggest" or "recommend" or "what should" or "which one" or "help me choose" or "pick for me" → ALWAYS recommend
+- Adding/ordering/cart operations → order
+- Suggestions/history/recommendations → recommend
+
+Examples:
+"add 2 coffees" → order
+"what do you have" → order
+"where is my order" → status
+"cancel my order" → status
+"cancel order 1" → status
+"cancel order 2" → status
+"yes cancel it" → status
+"modify my order" → status
+"change my order" → status
+"i want to update my order" → status
+"same as last time" → recommend
+"drinks for 3 people" → recommend
+"surprise me" → recommend
+"yes place order" → order
+"what's available" → order
+"what should I get" → recommend
+"suggest something" → recommend
+"help me choose" → recommend`;
+
+    async function supervisorAgent(text) {
+      try {
+        const content = await geminiCall(
+          GEMINI_MODEL_SUPERVISOR,
+          SUPERVISOR_PROMPT,
+          [{ role: "user", parts: [{ text }] }]
+        );
+        const result = (content.parts?.[0]?.text || "order").trim().toLowerCase();
+        if (result.includes("status")) return "status";
+        if (result.includes("recommend")) return "recommend";
+        return "order";
+      } catch {
+        return "order"; // fail safe — default to order agent
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── TOOL DEFINITIONS PER AGENT ──
+    // ═══════════════════════════════════════════════════════════════
+
+    // Order agent tools
+    const ORDER_TOOLS = [
+      {
+        name: "get_inventory",
+        description: "Get all available items with stock levels and SKU codes"
+      },
+      {
+        name: "get_cart",
+        description: "Get current cart contents"
+      },
+      {
+        name: "add_to_cart",
+        description: "Add one or more items to cart. Use exact SKU from inventory.",
+        parameters: {
+          type: "OBJECT",
+          properties: {
+            items: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  sku: { type: "STRING", description: "Exact SKU from inventory e.g. coffee, coke_can, green_tea, chips, water" },
+                  quantity: { type: "NUMBER", description: "How many to add" }
+                },
+                required: ["sku","quantity"]
+              }
+            }
+          },
+          required: ["items"]
+        }
+      },
+      {
+        name: "remove_from_cart",
+        description: "Remove a specific item from cart",
+        parameters: {
+          type: "OBJECT",
+          properties: { sku: { type: "STRING", description: "SKU of item to remove" } },
+          required: ["sku"]
+        }
+      },
+      {
+        name: "clear_cart",
+        description: "Remove all items from cart"
+      },
+      {
+        name: "submit_order",
+        description: "Place the order. ONLY call after user explicitly says yes/confirm/place it. Never call without confirmation."
+      },
+    ];
+
+    // Status agent tools
+    const STATUS_TOOLS = [
+      {
+        name: "get_order_status",
+        description: "Get all active orders with their current delivery status and whether they can be cancelled"
+      },
+      {
+        name: "cancel_order",
+        description: "Cancel a specific active order by index. Only works if round is still open or closed.",
+        parameters: {
+          type: "OBJECT",
+          properties: {
+            order_index: { type: "NUMBER", description: "1-based index of the order to cancel (from get_order_status list)" }
+          }
+        }
+      },
+      {
+        name: "get_round_status",
+        description: "Get the current round status and how many orders are in it"
+      },
+      {
+        name: "track_robot_location",
+        description: "Get Temi's current physical location and movement state"
+      },
+      {
+        name: "modify_order",
+        description: "Modify an existing active order — only works when round is open. Cancels the current order and returns user to catalog with cart pre-filled so they can change items."
+      },
+    ];
+
+    // Recommend agent tools
+    const RECOMMEND_TOOLS = [
+      {
+        name: "get_inventory",
+        description: "Get all available items with stock levels"
+      },
+      {
+        name: "get_order_history",
+        description: "Get the user's past orders to power reorder and preference-based suggestions"
+      },
+      {
+        name: "get_cart",
+        description: "See what is already in cart before suggesting more"
+      },
+      {
+        name: "suggest_items",
+        description: "Get smart item suggestions based on context",
+        parameters: {
+          type: "OBJECT",
+          properties: {
+            context: { type: "STRING", description: "e.g. surprise, drinks_for_group, healthy, quick_snack" },
+            count: { type: "NUMBER", description: "How many people or suggestions needed" }
+          }
+        }
+      },
+      {
+        name: "add_to_cart",
+        description: "Add suggested items to cart after user confirms",
+        parameters: {
+          type: "OBJECT",
+          properties: {
+            items: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  sku: { type: "STRING" },
+                  quantity: { type: "NUMBER" }
+                },
+                required: ["sku","quantity"]
+              }
+            }
+          },
+          required: ["items"]
+        }
+      },
+      {
+        name: "reorder_from_history",
+        description: "Add items from last order directly to cart"
+      },
+      {
+        name: "drinks_for_n_people",
+        description: "Suggest and add a mix of drinks for a group of N people",
+        parameters: {
+          type: "OBJECT",
+          properties: {
+            count: { type: "NUMBER", description: "Number of people to get drinks for" }
+          },
+          required: ["count"]
+        }
+      }
+    ];
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── TOOL EXECUTOR ──
+    // ═══════════════════════════════════════════════════════════════
+    function executeTool(name, args) {
+
+      // ── Inventory ──
+      if (name === "get_inventory") return compressedInventory();
+
+      // ── Cart read ──
+      if (name === "get_cart") return "Cart: " + cartSummaryForAgent();
+
+      // ── Add to cart ──
+      if (name === "add_to_cart") {
+        const results = [], oos = [], partial = [];
+        (args.items || []).forEach(({ sku, quantity }) => {
+          const stock = Math.max(0, Number(inventory[sku]?.quantity) || 0);
+          const iname = inventory[sku]?.name || sku;
+          if (stock === 0) { oos.push(iname); return; }
+          if (quantity > stock) {
+            cart[sku] = stock;
+            partial.push(`Only ${stock} ${iname} available`);
+            results.push(`${iname} x${stock}`);
+          } else {
+            const qty = Math.max(1, Math.round(Number(quantity) || 1));
+            cart[sku] = (cart[sku] || 0) + qty;
+            results.push(`${iname} x${qty}`);
+          }
+        });
+        updateCartUi(); renderCatalog();
+        let msg = results.length ? "Added: " + results.join(", ") + ". " : "";
+        if (partial.length) msg += "Partial: " + partial.join("; ") + ". ";
+        if (oos.length) {
+          const alts = Object.entries(inventory)
+            .filter(([,item]) => (item.quantity||0) > 0 && !oos.includes(item.name))
+            .slice(0,3).map(([,item]) => item.name).join(", ");
+          msg += `Out of stock: ${oos.join(", ")}.`;
+          if (alts) msg += ` Try: ${alts}.`;
+        }
+        return msg || "Done";
+      }
+
+      // ── Remove from cart ──
+      if (name === "remove_from_cart") {
+        const sku = args.sku;
+        if (cart[sku]) { delete cart[sku]; updateCartUi(); renderCatalog(); }
+        return "Removed " + (inventory[sku]?.name || sku) + " from cart";
+      }
+
+      // ── Clear cart ──
+      if (name === "clear_cart") {
+        Object.keys(cart).forEach(k => delete cart[k]);
+        updateCartUi(); renderCatalog();
+        return "Cart cleared";
+      }
+
+      // ── Submit order ──
+      if (name === "submit_order") {
+        if (Object.keys(cart).filter(k => cart[k] > 0).length === 0)
+          return "ERROR: Cart is empty. Ask user to add items first.";
+        const cartSnap = cartSummaryForAgent();
+        if (db) {
+          submitOrder(db).catch(e => console.error("Submit error:", e));
+        } else {
+          return "ERROR: Not connected to database.";
+        }
+        return `ORDER_SUBMITTED: ${cartSnap}`;
+      }
+
+      // ── Order status ──
+      if (name === "get_order_status") {
+        const active = (myOrders||[]).filter(o => {
+          const st = (o.status||"").toLowerCase();
+          return !["complete","delivered","cancelled","canceled"].includes(st);
+        });
+        if (!active.length) return "No active orders right now.";
+        return active.map((o,i) => {
+          const rId = o.roundId || "";
+          const rd = rId ? (allRounds[rId]||{}) : {};
+          const rs = (rd.status||"open").toLowerCase();
+          const items = Object.entries(o.items||{}).filter(([,q])=>q>0)
+            .map(([sku,q])=>(inventory[sku]?.name||sku)+" x"+q).join(", ");
+          let stage = "open — can cancel";
+          if (rs==="closed") stage = "closed, not dispatched — can cancel";
+          if (rs==="locked"||rs==="delivering") stage = "Temi en route — cannot cancel";
+          if (rs==="done") stage = "delivered";
+          if (robotState==="arrived_gaming") stage = "Temi arrived — collect now!";
+          return `Order ${i+1}: ${items} [${stage}]`;
+        }).join(" | ");
+      }
+
+      // ── Cancel order ──
+      if (name === "cancel_order") {
+        const active = (myOrders||[]).filter(o => {
+          const st = (o.status||"").toLowerCase();
+          return !["complete","delivered","cancelled","canceled"].includes(st);
+        });
+        if (!active.length) return "No active order to cancel.";
+        const idx = args.order_index ? Number(args.order_index)-1 : 0;
+        const order = active[Math.min(idx, active.length-1)];
+        const roundId = order.roundId || "";
+        const round = roundId ? (allRounds[roundId]||{}) : {};
+        const rs = (round.status||"open").toLowerCase();
+        const items = Object.entries(order.items||{}).filter(([,q])=>q>0)
+          .map(([sku,q])=>(inventory[sku]?.name||sku)+" x"+q).join(", ");
+        if (["locked","delivering","done"].includes(rs) ||
+            ["moving","arrived_pantry","arrived_gaming"].includes(robotState||"")) {
+          return `Cannot cancel "${items}" — Temi is already on the way!`;
+        }
+        if (!db || !order.id) return "Cannot connect to database.";
+        const updates = {};
+        // 1. Cancel the order itself
+        updates[`orders/${order.id}/status`] = "cancelled";
+        updates[`orders/${order.id}/cancelledAt`] = Date.now();
+
+        if (roundId) {
+          // Count remaining orders after this cancellation
+          const remainingOrderIds = Object.keys(round.orderIds || {}).filter(id => id !== order.id);
+          const newCount = remainingOrderIds.length;
+
+          if (newCount === 0) {
+            // Last order cancelled — delete entire round regardless of open/closed
+            // Cannot mix parent path with child paths in same update
+            updates[`rounds/${roundId}`] = null;
+            if (rs === "open") updates[`current_round_id`] = "";
+            // Note: closed rounds are not in current_round_id so no need to clear it
+          } else {
+            // Other orders still exist — update only specific child paths
+            updates[`rounds/${roundId}/orderIds/${order.id}`] = null;
+            updates[`rounds/${roundId}/activeOrderCount`] = newCount;
+            Object.entries(order.items||{}).forEach(([sku, qty]) => {
+              const curInManifest = Number(round.itemManifest?.[sku]) || 0;
+              const newQty = Math.max(0, curInManifest - Number(qty));
+              updates[`rounds/${roundId}/itemManifest/${sku}`] = newQty > 0 ? newQty : null;
+            });
+          }
+        }
+
+        // 6. Return stock to inventory
+        Object.entries(order.items||{}).forEach(([sku, qty]) => {
+          if (inventory[sku]) {
+            const cur = Number(inventory[sku].quantity)||0;
+            updates[`inventory/${sku}/quantity`] = cur + Number(qty);
+            inventory[sku].quantity = cur + Number(qty); // update local cache too
+          }
+        });
+
+        update(ref(db,"/"), updates)
+          .then(()=> console.log("Cancel OK:", updates))
+          .catch(e=> console.error("Cancel firebase error:", e));
+        renderCatalog();
+        return `CANCELLED: "${items}" cancelled and stock returned.`;
+      }
+
+      // ── Modify order ──
+      if (name === "modify_order") {
+        const active = (myOrders||[]).filter(o => {
+          const st = (o.status||"").toLowerCase();
+          return !["complete","delivered","cancelled","canceled"].includes(st);
+        });
+        if (!active.length) return "No active order to modify.";
+        const order = active[0];
+        const roundId = order.roundId || "";
+        const round = roundId ? (allRounds[roundId]||{}) : {};
+        const rs = (round.status||"open").toLowerCase();
+        if (rs !== "open") {
+          if (["locked","delivering"].includes(rs)) return "Cannot modify — Temi is already on the way to collect items!";
+          if (rs === "closed") return "Round is closed — can no longer modify. You can still cancel the order.";
+          return "Cannot modify order at this stage.";
+        }
+        // Trigger modifyRoundOrders via UI function
+        if (typeof window.modifyRoundOrders === "function") {
+          window.modifyRoundOrders(roundId);
+          return "MODIFY_STARTED: Your order has been cancelled and your cart is pre-filled with your previous items. Tell me what you want to add, remove, or change — then I will place the updated order.";
+        }
+        return "Cannot modify right now.";
+      }
+
+      // ── Get round status ──
+      if (name === "get_round_status") {
+        const rid = Object.keys(allRounds).find(id => allRounds[id].status === "open" || allRounds[id].status === "delivering");
+        if (!rid) return "No active round right now.";
+        const rd = allRounds[rid];
+        const count = Object.keys(rd.orderIds||{}).length;
+        const manifest = Object.entries(rd.itemManifest||{})
+          .filter(([,q])=>q>0)
+          .map(([sku,q])=>(inventory[sku]?.name||sku)+" x"+q).join(", ");
+        return `Round status: ${rd.status} | ${count} orders | Items: ${manifest || "none"}`;
+      }
+
+      // ── Track robot ──
+      if (name === "track_robot_location") {
+        const stateMap = {
+          idle: "Temi is idle at home base",
+          moving: "Temi is moving",
+          arrived_pantry: "Temi is at the pantry being loaded",
+          arrived_gaming: "Temi has arrived at the gaming zone!",
+          blocked: "Temi's path is blocked — retrying",
+        };
+        return stateMap[robotState] || `Temi state: ${robotState}`;
+      }
+
+      // ── Suggest items ──
+      if (name === "suggest_items") {
+        const ctx = (args.context || "").toLowerCase();
+        const count = Number(args.count) || 1;
+        const avail = Object.entries(inventory).filter(([,item]) => (item.quantity||0) > 0);
+        if (!avail.length) return "Nothing in stock right now.";
+
+        let picks = [];
+        if (ctx.includes("drink") || ctx.includes("group") || ctx.includes("people")) {
+          // Mix of beverages for N people
+          const bevs = avail.filter(([,item]) => item.category === "beverage");
+          picks = bevs.slice(0, Math.min(count, bevs.length));
+        } else if (ctx.includes("snack") || ctx.includes("quick")) {
+          picks = avail.filter(([,item]) => item.category === "snack").slice(0, 2);
+        } else {
+          // Surprise — pick 1 beverage + 1 snack
+          const bev = avail.find(([,item]) => item.category === "beverage");
+          const snk = avail.find(([,item]) => item.category === "snack");
+          if (bev) picks.push(bev);
+          if (snk) picks.push(snk);
+        }
+        if (!picks.length) picks = avail.slice(0, 2);
+        return "Suggestions: " + picks.map(([sku,item]) => `${item.name} (sku:${sku})`).join(", ");
+      }
+
+      // ── Reorder from history ──
+      if (name === "reorder_from_history") {
+        const h = loadOrderHistory().filter(o => o.status === "complete");
+        if (!h.length) return "No previous orders to reorder from.";
+        const last = h[0];
+        const added = [];
+        Object.entries(last.items||{}).forEach(([sku,qty]) => {
+          const q = Number(qty)||0;
+          if (q <= 0) return;
+          const stock = Number(inventory[sku]?.quantity)||0;
+          if (stock <= 0) return;
+          const addQty = Math.min(q, stock);
+          cart[sku] = (cart[sku]||0) + addQty;
+          added.push((inventory[sku]?.name||sku) + " x" + addQty);
+        });
+        updateCartUi(); renderCatalog();
+        if (!added.length) return "None of your last order items are in stock.";
+        return "Reordered: " + added.join(", ") + " — added to cart.";
+      }
+
+      // ── Order history ──
+      if (name === "get_order_history") return historySummaryForAgent();
+
+      // ── Drinks for N people ──
+      if (name === "drinks_for_n_people") {
+        const n = Math.max(1, Number(args.count) || 2);
+        const avail = Object.entries(inventory).filter(([,item]) => (item.quantity||0) > 0 && item.category === "beverage");
+        if (!avail.length) return "No beverages in stock right now.";
+        // List all available beverages with stock so agent can suggest choices
+        const options = avail.map(([sku, item]) => `${item.name} (${item.quantity} in stock)`).join(", ");
+        return `SUGGEST_DRINKS: For ${n} people, available beverages are: ${options}. Ask the user which drinks they'd like — don't pick automatically. Once confirmed, use add_to_cart.`;
+      }
+
+      return "Unknown tool: " + name;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── AGENT TOOL LOOP ──
+    // ═══════════════════════════════════════════════════════════════
+    async function runAgentLoop(model, systemPromptFn, contents, tools) {
+      let response = await geminiCall(model, systemPromptFn(), contents, tools);
+      let loops = 0;
+
+      while (loops < 5) {
+        const fnCalls = (response.parts||[]).filter(p => p.functionCall);
+        if (!fnCalls.length) break;
+
+        contents.push(response);
+        const responseParts = [];
+        let submitted = false;
+
+        for (const part of fnCalls) {
+          const { name, args } = part.functionCall;
+          let result;
+          try { result = executeTool(name, args||{}); }
+          catch(e) { result = "Tool error: " + e.message; console.error("Tool error:", name, e); }
+          console.log(`[Agent:${model.includes("lite")?"supervisor":"specialist"}] Tool: ${name} →`, String(result).slice(0,120));
+
+          responseParts.push({ functionResponse: { name, response: { result: String(result) } } });
+          if (String(result).startsWith("ORDER_SUBMITTED")) {
+            submitted = true;
+            setTimeout(() => { chatHistory = []; resetIdleTimer(); }, 2500);
+          }
+          if (String(result).startsWith("MODIFY_STARTED")) {
+            // Stay in chat — cart is pre-filled in background, user can add/change via chat
+          }
+        }
+
+        contents.push({ role: "user", parts: responseParts });
+        // Rebuild system prompt after every tool call — state may have changed (cart, inventory, orders)
+        response = await geminiCall(model, systemPromptFn(), contents, tools);
+        loops++;
+      }
+
+      const text = (response.parts||[]).find(p => p.text)?.text || "";
+      return text;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── SYSTEM PROMPTS PER AGENT ──
+    // ═══════════════════════════════════════════════════════════════
+
+    function orderSystemPrompt() {
+      return `You are Temi's Order Agent at Infosys Living Labs. Handle cart and order submission.
+
+LIVE STATE:
+Cart right now: ${cartSummaryForAgent()}
+${compressedInventory()}
+
+RULES:
+1. When user says "add X" or "I want X" → call add_to_cart IMMEDIATELY. Never ask for permission first.
+   After adding, confirm: "Added [items]. Shall I place the order?"
+2. NEVER say order is placed without calling submit_order tool first.
+3. No prices — items are free for employees.
+4. SKU fuzzy map: "lemon tea"→green_tea, "black coffee"/"espresso"→coffee, "soda"/"cola"→coke_can, "biscuits"→cookies, "orange juice"→juice.
+5. If requested qty > stock: add max available and explain in one sentence.
+6. Availability: check inventory. If item in Available list it IS in stock — never say OOS unless in OOS list.
+7. After submit_order confirms ORDER_SUBMITTED → reply: "Your order for [items] has been placed! Temi will be there soon. 🛵"
+8. NEVER return empty text after any tool call.
+9. Short replies — max 2 sentences after tool actions.`;
+    }
+
+    function statusSystemPrompt() {
+      const activeOrders = (myOrders||[]).filter(o=>!["complete","delivered","cancelled","canceled"].includes((o.status||"").toLowerCase()));
+      const orderSummary = activeOrders.length
+        ? activeOrders.map((o,i) => {
+            const rId = o.roundId||"";
+            const rd = rId ? (allRounds[rId]||{}) : {};
+            const rs = (rd.status||"open").toLowerCase();
+            const items = Object.entries(o.items||{}).filter(([,q])=>q>0).map(([sku,q])=>(inventory[sku]?.name||sku)+" x"+q).join(", ");
+              let stage = "open round — can cancel";
+            if (rs==="closed") stage = "round closed — can cancel";
+            if (rs==="locked"||rs==="delivering") stage = "Temi en route — cannot cancel";
+            if (rs==="done") stage = "delivered";
+            return `Order ${i+1}: ${items} [${stage}]`;
+          }).join(" | ")
+        : "none";
+      return `You are Temi's Status Agent at Infosys Living Labs. Handle tracking and cancellations.
+
+LIVE STATE:
+Robot state: ${robotState}
+Active orders: ${orderSummary}
+
+RULES:
+1. "where is my order" / "status" / "when" → call get_order_status and track_robot_location. Report clearly.
+   "modify" / "change my order" / "update order" → call modify_order. If round is open it will open catalog for editing. If closed/locked → explain why not possible.
+2. CANCEL FLOW — follow exactly:
+   a. User says "cancel" → call get_order_status first to get the fresh order list with statuses.
+   b. Read the status of each order from the tool result:
+      - "[open — can cancel]" or "[closed — can cancel]" → cancellable
+      - "[Temi en route — cannot cancel]" or "[delivered]" → NOT cancellable
+   c. If order is NOT cancellable → say exactly:
+      "Sorry, your order of [items] cannot be cancelled — [reason from status]. Temi is already on the way!"
+   d. If ONLY 1 cancellable order → ask: "Cancel your order of [items]? Say yes to confirm."
+   e. If 2+ orders → list ALL with their status and ask which to cancel.
+   f. After user confirms → say "Confirmed. Cancelling your order now." (the system handles the actual cancellation).
+   g. NEVER call clear_cart. NEVER say cancelled without the user confirming first.
+3. Short replies — 2-3 sentences max.`;
+    }
+
+    function recommendSystemPrompt() {
+      return `You are Temi's Recommend Agent at Infosys Living Labs. Handle suggestions and reorders.
+
+LIVE STATE:
+${compressedInventory()}
+${historySummaryForAgent()}
+Cart right now: ${cartSummaryForAgent()}
+
+RULES:
+1. "same as last time" / "reorder" / "usual" → call reorder_from_history immediately. Confirm what was added.
+2. "surprise me" / "anything" / "you pick" → call suggest_items(context:"surprise", count:1), then confirm with user before adding.
+3. "drinks for N people" / "N people" / "for my team" → call drinks_for_n_people(count:N). It returns available options — show them to the user and ask which drinks they want. Then use add_to_cart once confirmed.
+4. Always check inventory — only suggest items that are in stock.
+5. After reorder_from_history or drinks_for_n_people adds to cart: say what was added and ask "Shall I place the order?"
+6. NEVER return empty text after a tool call.
+7. Short replies — max 2 sentences.`;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── LAYER 3: SPECIALIST AGENTS ──
+    // ═══════════════════════════════════════════════════════════════
+    async function orderAgent(text, history) {
+      // Only pass clean user/model text turns — no tool messages in history
+      const cleanHistory = (history||[]).filter(m => m.role === "user" || m.role === "model");
+      const contents = [...cleanHistory, { role:"user", parts:[{ text }] }];
+      return runAgentLoop(GEMINI_MODEL_SPECIALIST, orderSystemPrompt, contents, ORDER_TOOLS);
+    }
+
+    async function statusAgent(text, history) {
+      const cleanHistory = (history||[]).filter(m => m.role === "user" || m.role === "model");
+      const contents = [...cleanHistory, { role:"user", parts:[{ text }] }];
+      return runAgentLoop(GEMINI_MODEL_SPECIALIST, statusSystemPrompt, contents, STATUS_TOOLS);
+    }
+
+    async function recommendAgent(text, history) {
+      const cleanHistory = (history||[]).filter(m => m.role === "user" || m.role === "model");
+      const contents = [...cleanHistory, { role:"user", parts:[{ text }] }];
+      return runAgentLoop(GEMINI_MODEL_SPECIALIST, recommendSystemPrompt, contents, RECOMMEND_TOOLS);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── ORCHESTRATOR ──
+    // ═══════════════════════════════════════════════════════════════
+    async function handleUserMessage(text) {
+      if (agentBusy || !text.trim()) return;
+      agentBusy = true;
+      el("btnSendChat").disabled = true;
+      resetIdleTimer();
+      appendMessage("user", text);
+      removeQuickChips();
+
+      try {
+        // ── Layer 1: Guardrail (pure JS) ──
+        if (!guardrail(text)) {
+          appendMessage("temi",
+            "I can only help with ordering beverages and snacks here! What would you like?",
+            "guard");
+          showQuickChips([
+            { label: "What's available?", msg: "What's available?" },
+            { label: "Surprise me", msg: "Surprise me" },
+            { label: "Same as last time", msg: "Same as last time" }
+          ]);
+          return;
+        }
+
+        const tLower = text.toLowerCase().trim();
+        const lastModelMsg = [...chatHistory].reverse().find(m => m.role === "model")?.parts?.[0]?.text || "";
+        const lastWasOrderAsk = /shall i place|place the order|place your order|want me to place|place this order/i.test(lastModelMsg);
+        const lastWasCancelAsk = /cancel your order|sure you want to cancel|would you like to cancel|reply yes to confirm|say yes to confirm|confirming your order now|cancelling your order/i.test(lastModelMsg);
+
+        // ── Short-circuit 1: cancel confirmation — pure JS, zero API calls ──
+        const cancelConfirmWords = ["yes","yeah","yep","ok","confirm","do it","go ahead","sure"];
+        const isYes = cancelConfirmWords.some(w => tLower === w || tLower === w + "." || tLower === "yes " + w);
+        if (isYes && lastWasCancelAsk) {
+          // Extract which order index from last Temi message (e.g. "Order 1" or single order)
+          const idxMatch = lastModelMsg.match(/order\s*(\d+)/i);
+          const orderIdx = idxMatch ? Number(idxMatch[1]) : 1;
+          // Call cancel_order directly in JS — no Gemini call needed
+          const result = executeTool("cancel_order", { order_index: orderIdx });
+          let reply;
+          if (result.startsWith("CANCELLED:")) {
+            const items = result.replace("CANCELLED:", "").replace("cancelled and stock returned.", "").trim().replace(/^"|"$/g, "");
+            reply = `Done! ${items} has been cancelled and stock returned.`;
+          } else {
+            reply = result; // show error or "cannot cancel" message as-is
+          }
+          chatHistory.push({ role:"user", parts:[{ text }] });
+          chatHistory.push({ role:"model", parts:[{ text: reply }] });
+          appendMessage("temi", reply);
+          updateQuickChips(reply);
+          return;
+        }
+
+        // ── Short-circuit 1b: "cancel order N" direct — pure JS ──
+        const directCancelMatch = tLower.match(/^(?:cancel\s+)?order\s*(\d+)$/);
+        if (directCancelMatch) {
+          const orderIdx = Number(directCancelMatch[1]);
+          const result = executeTool("cancel_order", { order_index: orderIdx });
+          let reply;
+          if (result.startsWith("CANCELLED:")) {
+            const items = result.replace("CANCELLED:", "").replace("cancelled and stock returned.", "").trim().replace(/^"|"$/g, "");
+            reply = `Done! ${items} has been cancelled and stock returned.`;
+          } else {
+            reply = result;
+          }
+          chatHistory.push({ role:"user", parts:[{ text }] });
+          chatHistory.push({ role:"model", parts:[{ text: reply }] });
+          appendMessage("temi", reply);
+          updateQuickChips(reply);
+          return;
+        }
+
+        // ── Short-circuit 2: place order confirmation (zero API calls) ──
+        const cartHasItems = Object.keys(cart).filter(k => cart[k]>0).length > 0;
+        const orderConfirmWords = ["yes","yes place","place order","submit","go ahead","order it","yep","do it","proceed","place it","ok place"];
+        const isConfirming = orderConfirmWords.some(w => tLower === w || tLower.startsWith(w));
+
+        if (isConfirming && cartHasItems && lastWasOrderAsk && !lastWasCancelAsk) {
+          const cartSnap = cartSummaryForAgent();
+          const result = executeTool("submit_order", {});
+          const reply = result.startsWith("ORDER_SUBMITTED")
+            ? `Your order for ${cartSnap} has been placed! Temi will be there soon. 🛵`
+            : result;
+          chatHistory.push({ role:"user", parts:[{ text }] });
+          chatHistory.push({ role:"model", parts:[{ text: reply }] });
+          appendMessage("temi", reply);
+          updateQuickChips(reply);
+          return;
+        }
+
+        showTyping();
+
+        // ── Layer 2: Supervisor routes intent ──
+        const intent = await supervisorAgent(text);
+        console.log("[Supervisor] intent:", intent);
+
+        // ── Layer 3: Specialist agent ──
+        let reply = "";
+        if (intent === "status") {
+          reply = await statusAgent(text, chatHistory);
+        } else if (intent === "recommend") {
+          reply = await recommendAgent(text, chatHistory);
+        } else {
+          reply = await orderAgent(text, chatHistory);
+        }
+
+        // Fallback if agent returns empty — generate from live state
+        if (!reply || !reply.trim()) {
+          const entries = Object.entries(cart).filter(([,q])=>q>0);
+          if (entries.length) {
+            const itemList = entries.map(([sku,q])=>(inventory[sku]?.name||sku)+" x"+q).join(", ");
+            reply = `Cart has: ${itemList}. Shall I place the order?`;
+          } else {
+            reply = "What would you like to order? I can show you what's available.";
+          }
+          console.warn("[Orchestrator] Agent returned empty reply — using fallback");
+        }
+
+        // ── Update history (user+model text only) ──
+        chatHistory.push({ role:"user", parts:[{ text }] });
+        chatHistory.push({ role:"model", parts:[{ text: reply }] });
+        if (chatHistory.length > 12) chatHistory = chatHistory.slice(-12);
+        if (chatHistory.length >= 10) summarizeHistory();
+
+        hideTyping();
+        appendMessage("temi", reply);
+        updateQuickChips(reply);
+
+      } catch(err) {
+        console.error("Orchestrator error:", err);
+        hideTyping();
+        const msg = err?.message || String(err);
+        const is429 = msg.includes("429") || msg.toLowerCase().includes("quota");
+        const is503 = msg.includes("503") || msg.includes("UNAVAILABLE");
+        appendMessage("temi",
+          is429 ? "Quota limit hit — please wait a moment and try again."
+          : is503 ? "Temi's brain is busy — please try again in a few seconds."
+          : "Something went wrong: " + msg.slice(0,120),
+          "guard"
+        );
+      } finally {
+        agentBusy = false;
+        el("btnSendChat").disabled = false;
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── HISTORY SUMMARIZER ──
+    // ═══════════════════════════════════════════════════════════════
+    async function summarizeHistory() {
+      try {
+        const histText = chatHistory
+          .map(m => (m.role==="user"?"User: ":"Temi: ") + (m.parts?.[0]?.text||""))
+          .join("\n");
+        const body = {
+          contents: [{ role:"user", parts:[{ text:"Summarize in ONE sentence what was ordered or changed:\n"+histText }] }],
+          generationConfig: { maxOutputTokens:30, temperature:0 }
+        };
+        const res = await fetch(mkUrl(GEMINI_MODEL_SUPERVISOR), {
+          method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)
+        });
+        const data = await res.json();
+        const summary = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        if (summary) {
+          chatHistory = [
+            { role:"user", parts:[{ text:"Context: "+summary }] },
+            { role:"model", parts:[{ text:"Got it." }] }
+          ];
+        }
+      } catch { /* keep existing */ }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── IDLE RESET ──
+    // ═══════════════════════════════════════════════════════════════
+    function resetIdleTimer() {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        chatHistory = [];
+        appendMessage("temi", "Still there? What would you like to order?");
+        showQuickChips([
+          { label: "What's available?", msg: "What's available?" },
+          { label: "Same as last time", msg: "Same as last time" },
+          { label: "Drinks for 2", msg: "Drinks for 2 people" }
+        ]);
+      }, 10 * 60 * 1000);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── QUICK CHIPS ──
+    // ═══════════════════════════════════════════════════════════════
+    function updateQuickChips(reply) {
+      const r = reply.toLowerCase();
+      const cartEmpty = Object.keys(cart).filter(k=>cart[k]>0).length === 0;
+      // Order just placed
+      if (r.includes("has been placed") || r.includes("temi will be there") || r.includes("temi will collect") || r.includes("placed!") || r.includes("order placed")) {
+        showQuickChips([
+          { label: "Where's my order?", msg: "Where is my order?" },
+          { label: "Cancel order", msg: "cancel my order" },
+          { label: "Order something else", msg: "What's available?" }
+        ]);
+      } else if (r.includes("shall i") || r.includes("place the order") || r.includes("place your order") || r.includes("want me to place") || r.includes("place this order")) {
+        showQuickChips([
+          { label: "Yes, place order", msg: "yes place order" },
+          { label: "Keep browsing", action: () => {
+            removeQuickChips();
+            appendMessage("temi", "No problem! Let me know when you're ready.");
+            showQuickChips([
+              { label: "What's available?", msg: "What's available?" },
+              { label: "Add more items", msg: "What else can I add?" },
+              { label: "Clear cart", msg: "clear cart" }
+            ]);
+          }},
+          { label: "Clear cart", msg: "clear cart" }
+        ]);
+      } else if (!cartEmpty) {
+        showQuickChips([
+          { label: "Submit order", msg: "yes place order" },
+          { label: "What else is available?", msg: "What's available?" },
+          { label: "Clear cart", msg: "clear cart" }
+        ]);
+      } else {
+        showQuickChips([
+          { label: "What's available?", msg: "What's available?" },
+          { label: "Same as last time", msg: "Same as last time" },
+          { label: "Drinks for 2", msg: "Drinks for 2 people" }
+        ]);
+      }
+    }
+
+    function showQuickChips(chips) {
+      removeQuickChips();
+      const msgs = el("chatMessages");
+      const row = document.createElement("div");
+      row.className = "quick-chips";
+      chips.forEach(chip => {
+        const btn = document.createElement("button");
+        btn.className = "qchip";
+        btn.textContent = chip.label || chip;
+        btn.onclick = () => {
+          row.remove();
+          if (chip.action) chip.action();
+          else handleUserMessage(chip.msg || chip);
+        };
+        row.appendChild(btn);
+      });
+      msgs.appendChild(row);
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    function removeQuickChips() {
+      el("chatMessages")?.querySelectorAll(".quick-chips").forEach(r => r.remove());
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── MESSAGE RENDERING ──
+    // ═══════════════════════════════════════════════════════════════
+    function appendMessage(role, text, badge = null) {
+      const msgs = el("chatMessages");
+      const row = document.createElement("div");
+      row.className = "msg-row" + (role === "user" ? " user" : "");
+      const avatar = document.createElement("div");
+      avatar.className = "msg-avatar " + (role === "user" ? "user-av" : "temi");
+      avatar.textContent = role === "user" ? "You" : "T";
+      const bubble = document.createElement("div");
+      bubble.className = "bubble " + (role === "user" ? "user" : "temi");
+      let badgeHtml = "";
+      if (badge === "guard") badgeHtml = `<span class="agent-badge badge-guard">blocked</span>`;
+      // Clean any raw tool syntax
+      const clean = String(text||"")
+        .replace(/<function=[^>]*>[\s\S]*?<\/function>/g,"")
+        .replace(/<function=[^>]*\/>/g,"").trim();
+      bubble.innerHTML = clean.replace(/&/g,"&amp;").replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;").replace(/\n/g,"<br>") + badgeHtml;
+      if (role === "user") { row.appendChild(bubble); row.appendChild(avatar); }
+      else { row.appendChild(avatar); row.appendChild(bubble); }
+      msgs.appendChild(row);
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    let typingEl = null;
+    function showTyping() {
+      if (typingEl) return;
+      const msgs = el("chatMessages");
+      const row = document.createElement("div");
+      row.className = "msg-row"; row.id = "typingRow";
+      const avatar = document.createElement("div");
+      avatar.className = "msg-avatar temi"; avatar.textContent = "T";
+      const bubble = document.createElement("div");
+      bubble.className = "bubble temi thinking";
+      bubble.innerHTML = `<div class="typing-dots"><span></span><span></span><span></span></div>`;
+      row.appendChild(avatar); row.appendChild(bubble);
+      msgs.appendChild(row);
+      msgs.scrollTop = msgs.scrollHeight;
+      typingEl = row;
+    }
+    function hideTyping() { typingEl?.remove(); typingEl = null; }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── CHAT INIT ──
+    // ═══════════════════════════════════════════════════════════════
+    function initChat() {
+      chatHistory = [];
+      el("chatMessages").innerHTML = "";
+      appendMessage("temi", "Hi! I'm Temi — what would you like to order today? 🛵");
+      showQuickChips([
+        { label: "What's available?", msg: "What's available?" },
+        { label: "Same as last time", msg: "Same as last time" },
+        { label: "Drinks for 2 people", msg: "Drinks for 2 people" },
+        { label: "Surprise me", msg: "Surprise me" }
+      ]);
+      resetIdleTimer();
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ── SEND BUTTON & ENTER KEY ──
+    // ═══════════════════════════════════════════════════════════════
+    el("chatInput").addEventListener("input", function() {
+      el("btnSendChat").disabled = !this.value.trim() || agentBusy;
+      this.style.height = "auto";
+      this.style.height = Math.min(this.scrollHeight, 80) + "px";
+    });
+
+    el("chatInput").addEventListener("keydown", function(e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        if (!this.value.trim() || agentBusy) return;
+        const text = this.value.trim();
+        this.value = ""; this.style.height = "auto";
+        el("btnSendChat").disabled = true;
+        handleUserMessage(text);
+      }
+    });
+
+    el("btnSendChat").addEventListener("click", () => {
+      const input = el("chatInput");
+      const text = input.value.trim();
+      if (!text || agentBusy) return;
+      input.value = ""; input.style.height = "auto";
+      el("btnSendChat").disabled = true;
+      handleUserMessage(text);
+    });
+
   </script>
 </body>
 </html>
