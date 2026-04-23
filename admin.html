@@ -6,1041 +6,733 @@
   <title>Temi Butler — Admin</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <style>
-    :root {
-      --bg-deep: #0f172a;
-      --card: rgba(30, 41, 59, 0.88);
-      --text-muted: #94a3b8;
-      --accent: #38bdf8;
-    }
+    :root { --bg-deep: #0f172a; --card: rgba(30, 41, 59, 0.88); --text-muted: #94a3b8; --accent: #38bdf8; }
     body {
       min-height: 100vh;
-      background: radial-gradient(ellipse 120% 80% at 50% -20%, #1e3a5f 0%, var(--bg-deep) 45%),
-        linear-gradient(160deg, #0f172a 0%, #1e1b4b 100%);
-      color: #f1f5f9;
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: radial-gradient(ellipse 120% 80% at 50% -20%, #1e3a5f 0%, var(--bg-deep) 45%), linear-gradient(160deg, #0f172a 0%, #1e1b4b 100%);
+      color: #f1f5f9; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     }
-    .hero-title {
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      background: linear-gradient(135deg, #38bdf8, #a78bfa);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .cardx {
-      background: var(--card);
-      border: 1px solid rgba(148, 163, 184, 0.2);
-      border-radius: 16px;
-    }
+    .hero-title { font-weight: 800; letter-spacing: -0.03em; background: linear-gradient(135deg, #38bdf8, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .cardx { background: var(--card); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 16px; }
     .muted { color: var(--text-muted); }
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(148, 163, 184, 0.2);
-      background: rgba(15, 23, 42, 0.55);
-      font-size: 0.85rem;
-    }
-    .table > :not(caption) > * > * {
-      background: transparent;
-      color: #e2e8f0;
-      border-color: rgba(148, 163, 184, 0.18);
-    }
+    .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(15, 23, 42, 0.55); font-size: 0.85rem; }
+    .table > :not(caption) > * > * { background: transparent; color: #e2e8f0; border-color: rgba(148, 163, 184, 0.18); }
     .table thead th { color: #cbd5e1; }
-    .btn-accent {
-      background: linear-gradient(135deg, #0ea5e9, #7c3aed);
-      border: none;
-      font-weight: 700;
-    }
+    .btn-accent { background: linear-gradient(135deg, #0ea5e9, #7c3aed); border: none; font-weight: 700; }
     .btn-accent:disabled { opacity: 0.5; }
     .out { color: #f87171; font-weight: 700; }
     .qty { font-variant-numeric: tabular-nums; }
-    .order-card {
-      background: rgba(15, 23, 42, 0.35);
-      border: 1px solid rgba(148, 163, 184, 0.18);
-      border-radius: 14px;
-      padding: 12px 14px;
-    }
-    .order-card.active { border-color: rgba(56, 189, 248, 0.45); }
-    .order-actions .btn { min-width: 96px; }
     .inv-actions .btn { min-width: 44px; }
-    .inv-form-control,
-    .inv-form-control:focus {
-      background: rgba(15, 23, 42, 0.65);
-      color: #e2e8f0;
-      border: 1px solid rgba(148, 163, 184, 0.25);
-    }
+    .inv-form-control, .inv-form-control:focus { background: rgba(15, 23, 42, 0.65); color: #e2e8f0; border: 1px solid rgba(148, 163, 184, 0.25); }
     .inv-form-control::placeholder { color: rgba(148, 163, 184, 0.55); }
-    .inv-add-panel {
-      background: rgba(15, 23, 42, 0.35);
-      border: 1px solid rgba(148, 163, 184, 0.18);
-      border-radius: 12px;
-      padding: 14px 16px;
-    }
-    .inv-edit-panel {
-      background: rgba(15, 23, 42, 0.45);
-      border-radius: 10px;
-      padding: 12px 14px;
-      border: 1px solid rgba(56, 189, 248, 0.22);
-    }
+    .inv-add-panel { background: rgba(15, 23, 42, 0.35); border: 1px solid rgba(148, 163, 184, 0.18); border-radius: 12px; padding: 14px 16px; }
+    .inv-edit-panel { background: rgba(15, 23, 42, 0.45); border-radius: 10px; padding: 12px 14px; border: 1px solid rgba(56, 189, 248, 0.22); }
+    .round-card { background: rgba(15,23,42,0.35); border: 1px solid rgba(148,163,184,0.18); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; }
+    .round-card.open-r { border-color: rgba(29,158,117,0.5); }
+    .round-card.closed-r { border-color: rgba(83,74,183,0.5); }
+    .round-card.active-r { border-color: rgba(24,95,165,0.6); }
+    .round-card.done-r { opacity: 0.6; }
+    .round-manifest { background: rgba(15,23,42,0.5); border-radius: 8px; padding: 8px 10px; font-size: 0.82rem; color: #94a3b8; margin: 8px 0; line-height: 1.7; }
+    .countdown { font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; color: #1d9e75; }
+    .countdown.warn { color: #ef9f27; }
+    .stat-card { background: rgba(15,23,42,0.5); border-radius: 10px; padding: 12px 14px; border: 1px solid rgba(148,163,184,0.15); }
+    .stat-val { font-size: 1.5rem; font-weight: 700; color: #f1f5f9; font-variant-numeric: tabular-nums; }
+    .stat-lbl { font-size: 0.75rem; color: #64748b; margin-top: 2px; }
+    .pop-bar-wrap { flex: 1; background: rgba(15,23,42,0.5); border-radius: 99px; height: 6px; overflow: hidden; }
+    .pop-bar { height: 6px; border-radius: 99px; background: #0f6e56; }
+    .section-sub { font-size: 0.72rem; color: #475569; text-transform: uppercase; letter-spacing: 0.08em; margin: 12px 0 8px; }
   </style>
 </head>
 <body>
-  <div class="container py-4 py-md-5">
-    <header class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
-      <div>
-        <h1 class="hero-title h2 mb-1">Temi Butler — Admin</h1>
-        <div class="muted small">Inventory + orders + dispatch</div>
-      </div>
-      <div class="d-flex flex-wrap align-items-center gap-2">
-        <div class="pill">
-          <span class="spinner-border spinner-border-sm text-info d-none" id="spinConn" role="status" aria-hidden="true"></span>
-          <span id="connText" class="muted">Connecting…</span>
-        </div>
-        <button type="button" class="btn btn-sm btn-outline-light d-none" id="btnLogout">Logout</button>
-      </div>
-    </header>
-
-    <div id="firebaseError" class="alert alert-danger d-none" role="alert"></div>
-
-    <!-- Login -->
-    <div id="viewLogin" class="cardx p-4 p-md-5">
-      <div class="row g-3 align-items-center">
-        <div class="col-12 col-md-7">
-          <h2 class="h4 mb-2">Admin login</h2>
-          <p class="muted mb-0">Sign in with your admin account.</p>
-        </div>
-        <div class="col-12 col-md-5">
-          <label class="form-label muted">Email</label>
-          <input id="email" class="form-control form-control-lg" type="email" autocomplete="username" placeholder="admin@example.com" />
-          <label class="form-label muted mt-3">Password</label>
-          <input id="password" class="form-control form-control-lg" type="password" autocomplete="current-password" placeholder="••••••••" />
-          <div class="d-flex gap-2 mt-3">
-            <button class="btn btn-accent text-white flex-grow-1" id="btnLogin">Login</button>
-          </div>
-          <div class="muted small mt-2">Uses Firebase Authentication (Email/Password).</div>
-        </div>
-      </div>
+<div class="container py-4 py-md-5">
+  <header class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
+    <div>
+      <h1 class="hero-title h2 mb-1">Temi Butler — Admin</h1>
+      <div class="muted small">Inventory + rounds + dispatch</div>
     </div>
-
-    <!-- App -->
-    <div id="viewApp" class="d-none">
-      <div class="cardx p-3 p-md-4 mb-3">
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-          <div class="d-flex flex-wrap gap-2">
-            <button class="btn btn-sm btn-outline-info" id="tabInventory">Inventory</button>
-            <button class="btn btn-sm btn-outline-info" id="tabOrders">Orders</button>
-          </div>
-          <div class="d-flex flex-wrap align-items-center gap-2">
-            <span class="pill">
-              <span class="muted">Temi status:</span>
-              <span id="temiStatus" class="fw-semibold">—</span>
-            </span>
-            <span class="pill">
-              <span class="muted">Robot state:</span>
-              <span id="temiRobotState" class="fw-semibold">—</span>
-            </span>
-            <span class="pill">
-              <span class="muted">Location cmd:</span>
-              <span id="temiLocation" class="fw-semibold">—</span>
-            </span>
-          </div>
-        </div>
-
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3">
-          <div class="muted small">Manual controls (optional)</div>
-          <div class="d-flex flex-wrap align-items-center gap-2">
-            <div class="input-group input-group-sm" style="width: min(420px, 100%);">
-              <span class="input-group-text" style="background: rgba(15,23,42,0.55); color:#cbd5e1; border-color: rgba(148,163,184,0.2);">Send Temi to</span>
-              <select class="form-select" id="selManualLocation" style="background: rgba(15,23,42,0.55); color:#e2e8f0; border-color: rgba(148,163,184,0.2);">
-                <option value="home base">home base</option>
-                <option value="pantry">pantry</option>
-                <option value="gaming">gaming</option>
-              </select>
-              <button type="button" class="btn btn-accent text-white" id="btnSendManual">Go</button>
-            </div>
-            <button type="button" class="btn btn-sm btn-outline-warning" id="btnResetIdle">Reset (idle)</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Inventory -->
-      <section id="panelInventory" class="cardx p-3 p-md-4 mb-3">
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-          <div>
-            <h2 class="h5 mb-1">Inventory</h2>
-            <div class="muted small">Add items, edit details, or use − / + for stock. “Out of Stock” at 0.</div>
-          </div>
-        </div>
-
-        <div class="inv-add-panel mb-3">
-          <div class="fw-semibold small mb-2">Add item</div>
-          <div class="row g-2 g-md-3 align-items-end">
-            <div class="col-6 col-lg-2">
-              <label class="form-label muted small mb-1" for="addSku">SKU <span class="text-danger">*</span></label>
-              <input id="addSku" type="text" class="form-control form-control-sm inv-form-control" maxlength="64" autocomplete="off" placeholder="e.g. orange-juice" />
-            </div>
-            <div class="col-6 col-lg-2">
-              <label class="form-label muted small mb-1" for="addName">Name <span class="text-danger">*</span></label>
-              <input id="addName" type="text" class="form-control form-control-sm inv-form-control" maxlength="120" placeholder="Display name" />
-            </div>
-            <div class="col-4 col-lg-1">
-              <label class="form-label muted small mb-1" for="addEmoji">Emoji</label>
-              <input id="addEmoji" type="text" class="form-control form-control-sm inv-form-control" maxlength="16" placeholder="🍊" />
-            </div>
-            <div class="col-8 col-lg-2">
-              <label class="form-label muted small mb-1" for="addCategory">Category <span class="text-danger">*</span></label>
-              <select id="addCategory" class="form-select form-select-sm inv-form-control">
-                <option value="beverage">beverage</option>
-                <option value="snack">snack</option>
-              </select>
-            </div>
-            <div class="col-4 col-lg-1">
-              <label class="form-label muted small mb-1" for="addQty">Qty</label>
-              <input id="addQty" type="number" class="form-control form-control-sm inv-form-control" min="0" max="99999" value="10" />
-            </div>
-            <div class="col-12 col-lg-3">
-              <label class="form-label muted small mb-1" for="addImageUrl">Image URL (optional)</label>
-              <input id="addImageUrl" type="text" class="form-control form-control-sm inv-form-control" maxlength="2000" placeholder="https://…/image.png" />
-            </div>
-            <div class="col-12 col-lg-1">
-              <button type="button" class="btn btn-accent text-white w-100" id="btnAddInventory">Add</button>
-            </div>
-          </div>
-          <p class="muted small mb-0 mt-2">SKU is the database key (lowercase letters, numbers, underscore, hyphen). It cannot be changed later.</p>
-        </div>
-
-        <div class="table-responsive">
-          <table class="table table-sm align-middle mb-0">
-            <thead>
-              <tr>
-                <th style="width: 40%;">Product</th>
-                <th style="width: 14%;">Quantity</th>
-                <th style="width: 46%;">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="invBody"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- Orders -->
-      <section id="panelOrders" class="cardx p-3 p-md-4 d-none">
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-          <div>
-            <h2 class="h5 mb-1">Orders</h2>
-            <div class="muted small">Accept acknowledges a pending order (no movement). Start trip begins pickup; at pantry, Accept sends Temi to gaming. Decline is disabled for now.</div>
-          </div>
-          <div class="pill">
-            <span class="muted">Notification:</span>
-            <span id="notifState" class="fw-semibold">—</span>
-          </div>
-        </div>
-
-        <div id="ordersList" class="d-flex flex-column gap-2 mt-3"></div>
-        <p id="ordersEmpty" class="muted small mt-3 mb-0 d-none">No orders yet.</p>
-      </section>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <div class="pill"><span class="spinner-border spinner-border-sm text-info d-none" id="spinConn" role="status" aria-hidden="true"></span><span id="connText" class="muted">Connecting…</span></div>
+      <button type="button" class="btn btn-sm btn-outline-light d-none" id="btnLogout">Logout</button>
     </div>
-  </div>
+  </header>
 
-  <!-- Notification modal -->
-  <div class="modal fade" id="notifModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content" style="background: rgba(30, 41, 59, 0.95); color:#e2e8f0; border: 1px solid rgba(148,163,184,0.2);">
-        <div class="modal-header" style="border-color: rgba(148,163,184,0.18);">
-          <h5 class="modal-title">New order received</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <p class="mb-2">A customer placed a new order.</p>
-          <p class="muted small mb-0">Press OK to open the Orders page.</p>
-        </div>
-        <div class="modal-footer" style="border-color: rgba(148,163,184,0.18);">
-          <button type="button" class="btn btn-accent text-white" id="btnNotifOk" data-bs-dismiss="modal">OK</button>
-        </div>
+  <div id="firebaseError" class="alert alert-danger d-none" role="alert"></div>
+
+  <div id="viewLogin" class="cardx p-4 p-md-5">
+    <div class="row g-3 align-items-center">
+      <div class="col-12 col-md-7"><h2 class="h4 mb-2">Admin login</h2><p class="muted mb-0">Sign in with your admin account.</p></div>
+      <div class="col-12 col-md-5">
+        <label class="form-label muted">Email</label>
+        <input id="email" class="form-control form-control-lg" type="email" autocomplete="username" placeholder="admin@example.com" />
+        <label class="form-label muted mt-3">Password</label>
+        <input id="password" class="form-control form-control-lg" type="password" autocomplete="current-password" placeholder="••••••••" />
+        <div class="d-flex gap-2 mt-3"><button class="btn btn-accent text-white flex-grow-1" id="btnLogin">Login</button></div>
+        <div class="muted small mt-2">Uses Firebase Authentication (Email/Password).</div>
       </div>
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <div id="viewApp" class="d-none">
+    <div class="cardx p-3 p-md-4 mb-3">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div class="d-flex flex-wrap gap-2">
+          <button class="btn btn-sm btn-outline-info" id="tabInventory">Inventory</button>
+          <button class="btn btn-sm btn-outline-info" id="tabRounds">Rounds</button>
+          <button class="btn btn-sm btn-outline-info" id="tabHistory">History</button>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <span class="pill"><span class="muted">Temi:</span><span id="temiStatus" class="fw-semibold">—</span></span>
+          <span class="pill"><span class="muted">State:</span><span id="temiRobotState" class="fw-semibold">—</span></span>
+          <span class="pill"><span class="muted">Location:</span><span id="temiLocation" class="fw-semibold">—</span></span>
+          <span class="pill d-none" id="deliveringPill" style="border-color:rgba(56,189,248,0.4)"><span class="muted">Delivering:</span><span id="deliveringText" class="fw-semibold text-info">—</span></span>
+        </div>
+      </div>
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3">
+        <div class="muted small">Manual controls</div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <div class="input-group input-group-sm" style="width:min(420px,100%)">
+            <span class="input-group-text" style="background:rgba(15,23,42,0.55);color:#cbd5e1;border-color:rgba(148,163,184,0.2)">Send Temi to</span>
+            <select class="form-select" id="selManualLocation" style="background:rgba(15,23,42,0.55);color:#e2e8f0;border-color:rgba(148,163,184,0.2)">
+              <option value="home base">home base</option>
+              <option value="pantry">pantry</option>
+              <option value="gaming">gaming</option>
+            </select>
+            <button type="button" class="btn btn-accent text-white" id="btnSendManual">Go</button>
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-warning" id="btnResetIdle">Reset (idle)</button>
+        </div>
+      </div>
+    </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-    import {
-      getAuth,
-      onAuthStateChanged,
-      signInWithEmailAndPassword,
-      signOut,
-    } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
-    import {
-      getDatabase,
-      ref,
-      onValue,
-      get,
-      set,
-      update,
-      remove,
-      runTransaction,
-      serverTimestamp,
-    } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
+    <section id="panelInventory" class="cardx p-3 p-md-4 mb-3">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <div><h2 class="h5 mb-1">Inventory</h2><div class="muted small">Add items, edit details, or use − / + for stock.</div></div>
+      </div>
+      <div class="inv-add-panel mb-3">
+        <div class="fw-semibold small mb-2">Add item</div>
+        <div class="row g-2 g-md-3 align-items-end">
+          <div class="col-6 col-lg-2"><label class="form-label muted small mb-1" for="addSku">SKU <span class="text-danger">*</span></label><input id="addSku" type="text" class="form-control form-control-sm inv-form-control" maxlength="64" autocomplete="off" placeholder="e.g. orange-juice" /></div>
+          <div class="col-6 col-lg-2"><label class="form-label muted small mb-1" for="addName">Name <span class="text-danger">*</span></label><input id="addName" type="text" class="form-control form-control-sm inv-form-control" maxlength="120" placeholder="Display name" /></div>
+          <div class="col-4 col-lg-1"><label class="form-label muted small mb-1" for="addEmoji">Emoji</label><input id="addEmoji" type="text" class="form-control form-control-sm inv-form-control" maxlength="16" placeholder="🍊" /></div>
+          <div class="col-8 col-lg-2"><label class="form-label muted small mb-1" for="addCategory">Category <span class="text-danger">*</span></label><select id="addCategory" class="form-select form-select-sm inv-form-control"><option value="beverage">beverage</option><option value="snack">snack</option></select></div>
+          <div class="col-4 col-lg-1"><label class="form-label muted small mb-1" for="addQty">Qty</label><input id="addQty" type="number" class="form-control form-control-sm inv-form-control" min="0" max="99999" value="10" /></div>
+          <div class="col-12 col-lg-3"><label class="form-label muted small mb-1" for="addImageUrl">Image URL (optional)</label><input id="addImageUrl" type="text" class="form-control form-control-sm inv-form-control" maxlength="2000" placeholder="https://…/image.png" /></div>
+          <div class="col-12 col-lg-1"><button type="button" class="btn btn-accent text-white w-100" id="btnAddInventory">Add</button></div>
+        </div>
+        <p class="muted small mb-0 mt-2">SKU uses lowercase letters, numbers, underscore, hyphen. Cannot be changed later.</p>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead><tr><th style="width:40%">Product</th><th style="width:14%">Quantity</th><th style="width:46%">Actions</th></tr></thead>
+          <tbody id="invBody"></tbody>
+        </table>
+      </div>
+    </section>
 
-    // Same Firebase config as customer page
-    const firebaseConfig = {
-      apiKey: "AIzaSyCTOREQwSXlET_OH764k5bbwo4hn_GtvHA",
-      authDomain: "temi-beverage-delivery.firebaseapp.com",
-      databaseURL: "https://temi-beverage-delivery-default-rtdb.firebaseio.com",
-      projectId: "temi-beverage-delivery",
-    };
+    <section id="panelRounds" class="cardx p-3 p-md-4 mb-3 d-none">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <div><h2 class="h5 mb-1">Rounds</h2><div class="muted small">Open rounds auto-close after 10 min. Close → Start trip → Dispatch.</div></div>
+        <div class="pill"><span class="muted">Notification:</span><span id="notifState" class="fw-semibold">—</span></div>
+      </div>
+      <div id="roundOpenSection" class="mb-2"></div>
+      <div id="roundQueueSection" class="mb-2"></div>
+      <div id="roundActiveSection" class="mb-2"></div>
+      <div id="roundDoneSection"></div>
+      <p id="roundsEmpty" class="muted small mt-3 mb-0 d-none">No rounds yet.</p>
+    </section>
 
-    const el = (id) => document.getElementById(id);
+    <section id="panelHistory" class="cardx p-3 p-md-4 mb-3 d-none">
+      <h2 class="h5 mb-3">History</h2>
+      <div class="d-flex gap-2 mb-3">
+        <button class="btn btn-sm btn-outline-info active" id="htabAll" onclick="switchHistTab('all')">All rounds</button>
+        <button class="btn btn-sm btn-outline-info" id="htabPopular" onclick="switchHistTab('popular')">Popular items</button>
+        <button class="btn btn-sm btn-outline-info" id="htabCancelled" onclick="switchHistTab('cancelled')">Cancelled</button>
+      </div>
+      <div id="hpAll"></div>
+      <div id="hpPopular" style="display:none"></div>
+      <div id="hpCancelled" style="display:none"></div>
+    </section>
+  </div>
+</div>
 
-    /** @param {unknown} s */
-    function escapeHtml(s) {
-      const d = document.createElement("div");
-      d.textContent = s == null ? "" : String(s);
-      return d.innerHTML;
+<div class="modal fade" id="notifModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:rgba(30,41,59,0.95);color:#e2e8f0;border:1px solid rgba(148,163,184,0.2)">
+      <div class="modal-header" style="border-color:rgba(148,163,184,0.18)"><h5 class="modal-title">New order received</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div>
+      <div class="modal-body"><p class="mb-2">A customer placed a new order.</p><p class="muted small mb-0">Press OK to open the Rounds page.</p></div>
+      <div class="modal-footer" style="border-color:rgba(148,163,184,0.18)"><button type="button" class="btn btn-accent text-white" id="btnNotifOk" data-bs-dismiss="modal">OK</button></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
+  import { getDatabase, ref, onValue, get, set, update, remove, runTransaction, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCTOREQwSXlET_OH764k5bbwo4hn_GtvHA",
+    authDomain: "temi-beverage-delivery.firebaseapp.com",
+    databaseURL: "https://temi-beverage-delivery-default-rtdb.firebaseio.com",
+    projectId: "temi-beverage-delivery",
+  };
+
+  const el = (id) => document.getElementById(id);
+
+  function escapeHtml(s) { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
+  function escapeHtmlAttr(s) { return String(s ?? "").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/'/g,"&#39;").replace(/</g,"&lt;"); }
+  function normalizeSkuInput(raw) { return String(raw || "").trim().toLowerCase().replace(/\s+/g, "_"); }
+  function isValidSku(sku) { return /^[a-z0-9_-]{1,64}$/.test(sku); }
+  function displayEmojiForItem(it) { const e = it?.emoji; return e != null && String(e).trim() !== "" ? String(e) : "📦"; }
+  function fmtTime(ts) { if (!ts) return ""; return new Date(ts).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }); }
+
+  const showErr = (msg) => { const box = el("firebaseError"); box.textContent = msg; box.classList.remove("d-none"); };
+  const clearErr = () => el("firebaseError").classList.add("d-none");
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const auth = getAuth(app);
+
+  const viewLogin = el("viewLogin");
+  const viewApp = el("viewApp");
+  const btnLogout = el("btnLogout");
+
+  function setLoggedIn(on) {
+    if (on) { viewLogin.classList.add("d-none"); viewApp.classList.remove("d-none"); btnLogout.classList.remove("d-none"); }
+    else { viewLogin.classList.remove("d-none"); viewApp.classList.add("d-none"); btnLogout.classList.add("d-none"); }
+  }
+
+  onAuthStateChanged(auth, (user) => { setLoggedIn(Boolean(user)); clearErr(); });
+  el("btnLogin").addEventListener("click", async () => {
+    try { await signInWithEmailAndPassword(auth, (el("email").value||"").trim(), el("password").value||""); } catch (e) { console.error(e); showErr("Login failed. Check email and password."); }
+  });
+  btnLogout.addEventListener("click", async () => { try { await signOut(auth); } catch (e) { console.error(e); } });
+
+  // ── Tabs ──
+  const panelInventory = el("panelInventory");
+  const panelRounds = el("panelRounds");
+  const panelHistory = el("panelHistory");
+  let activeTab = "inventory";
+
+  function showTab(tab) {
+    activeTab = tab;
+    panelInventory.classList.toggle("d-none", tab !== "inventory");
+    panelRounds.classList.toggle("d-none", tab !== "rounds");
+    panelHistory.classList.toggle("d-none", tab !== "history");
+    if (tab === "rounds") renderRoundsPanel();
+    if (tab === "history") renderHistoryPanel();
+  }
+  el("tabInventory").addEventListener("click", () => showTab("inventory"));
+  el("tabRounds").addEventListener("click", () => showTab("rounds"));
+  el("tabHistory").addEventListener("click", () => showTab("history"));
+
+  // ── Temi state ──
+  let lastStatus = "";
+  let lastLocation = "";
+  let lastRobotState = "";
+  let allRounds = {};
+  let orders = {};
+  let inventory = {};
+  let currentRoundId = "";
+  let currentDeliveringRound = "";
+
+  onValue(ref(db, "status"), (snap) => { lastStatus = snap.val() || ""; el("temiStatus").textContent = lastStatus || "—"; renderRoundsPanel(); });
+  onValue(ref(db, "location"), (snap) => { lastLocation = snap.val() || ""; el("temiLocation").textContent = lastLocation || "—"; });
+  onValue(ref(db, "robot_state"), (snap) => { lastRobotState = snap.val() || ""; el("temiRobotState").textContent = lastRobotState || "—"; renderRoundsPanel(); });
+  onValue(ref(db, "rounds"), (snap) => { allRounds = snap.val() || {}; renderRoundsPanel(); renderHistoryPanel(); });
+  onValue(ref(db, "orders"), (snap) => { orders = snap.val() || {}; renderHistoryPanel(); }, () => {});
+  onValue(ref(db, "current_round_id"), (snap) => { currentRoundId = snap.val() || ""; });
+  onValue(ref(db, "current_delivering_round"), (snap) => {
+    currentDeliveringRound = snap.val() || "";
+    const pill = el("deliveringPill");
+    if (currentDeliveringRound) {
+      const cnt = Object.keys(allRounds[currentDeliveringRound]?.orderIds || {}).length;
+      el("deliveringText").textContent = cnt + " orders";
+      pill.classList.remove("d-none");
+    } else { pill.classList.add("d-none"); }
+    renderRoundsPanel();
+  });
+  onValue(ref(db, "inventory"), (snap) => { inventory = snap.val() || {}; if (editingSku && !Object.prototype.hasOwnProperty.call(inventory, editingSku)) editingSku = null; renderInventory(); }, () => showErr("Could not read inventory."));
+
+  function temiIsBusy() {
+    const rs = String(lastRobotState || "").toLowerCase().trim();
+    // arrived_pantry or arrived_gaming with no active delivery = Temi is free for next trip
+    if (rs === "arrived_pantry" || rs === "arrived_gaming") {
+      return Boolean(currentDeliveringRound);
     }
-
-    /** Safe for double-quoted HTML attributes */
-    /** @param {unknown} s */
-    function escapeHtmlAttr(s) {
-      return String(s ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;")
-        .replace(/</g, "&lt;");
+    // Temi moving with no active delivery = returning home = safe to redirect to pantry
+    if (rs === "moving") {
+      return Boolean(currentDeliveringRound);
     }
+    if (rs) return rs !== "idle";
+    const s = (lastStatus || "").toLowerCase();
+    return s.includes("preparing") || s.includes("blocked");
+  }
 
-    /** RTDB key: unambiguous path segment */
-    function normalizeSkuInput(raw) {
-      return String(raw || "")
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, "_");
-    }
+  function isAtPantry() { return lastRobotState === "arrived_pantry" || (lastStatus || "").toLowerCase().includes("arrived_pantry"); }
+  function isAtGaming() { return lastRobotState === "arrived_gaming"; }
 
-    function isValidSku(sku) {
-      return /^[a-z0-9_-]{1,64}$/.test(sku);
-    }
+  function formatManifest(manifest) {
+    return Object.entries(manifest || {}).filter(([,q]) => Number(q) > 0)
+      .map(([sku, q]) => "<strong>" + escapeHtml(inventory[sku]?.name || sku) + "</strong> &times;" + q).join("&nbsp;&nbsp;") || "—";
+  }
 
-    /** Same fallback as `index.html` when emoji is missing (and no image in catalog picture slot). */
-    const DEFAULT_INVENTORY_EMOJI = "📦";
+  // ── Manual controls ──
+  el("btnSendManual").addEventListener("click", async () => {
+    const loc = el("selManualLocation").value;
+    try {
+      await set(ref(db, "location"), loc);
+      await set(ref(db, "status"), "admin_manual_to_" + loc.replace(" ","_"));
 
-    function displayEmojiForItem(it) {
-      const e = it?.emoji;
-      return e != null && String(e).trim() !== "" ? String(e) : DEFAULT_INVENTORY_EMOJI;
-    }
-
-    const showErr = (msg) => {
-      const box = el("firebaseError");
-      box.textContent = msg;
-      box.classList.remove("d-none");
-    };
-    const clearErr = () => el("firebaseError").classList.add("d-none");
-
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const auth = getAuth(app);
-
-    // Views
-    const viewLogin = el("viewLogin");
-    const viewApp = el("viewApp");
-    const btnLogout = el("btnLogout");
-
-    function setLoggedIn(on) {
-      if (on) {
-        viewLogin.classList.add("d-none");
-        viewApp.classList.remove("d-none");
-        btnLogout.classList.remove("d-none");
-      } else {
-        viewLogin.classList.remove("d-none");
-        viewApp.classList.add("d-none");
-        btnLogout.classList.add("d-none");
-      }
-    }
-
-    onAuthStateChanged(auth, (user) => {
-      setLoggedIn(Boolean(user));
-      clearErr();
-    });
-
-    el("btnLogin").addEventListener("click", async () => {
-      const email = (el("email").value || "").trim();
-      const password = el("password").value || "";
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-      } catch (e) {
-        console.error(e);
-        showErr("Login failed. Check email and password.");
-      }
-    });
-
-    btnLogout.addEventListener("click", async () => {
-      try {
-        await signOut(auth);
-      } catch (e) {
-        console.error(e);
-      }
-    });
-
-    // Tabs
-    const panelInventory = el("panelInventory");
-    const panelOrders = el("panelOrders");
-    function showTab(tab) {
-      if (tab === "inventory") {
-        panelInventory.classList.remove("d-none");
-        panelOrders.classList.add("d-none");
-      } else {
-        panelOrders.classList.remove("d-none");
-        panelInventory.classList.add("d-none");
-      }
-    }
-    el("tabInventory").addEventListener("click", () => showTab("inventory"));
-    el("tabOrders").addEventListener("click", () => showTab("orders"));
-
-    // Temi status + location
-    let lastStatus = "";
-    let lastLocation = "";
-    let lastRobotState = "";
-    onValue(ref(db, "status"), (snap) => {
-      lastStatus = snap.val() || "";
-      el("temiStatus").textContent = lastStatus || "—";
-      // `showDispatch` depends on status/robot_state; re-render order cards live.
-      renderOrders();
-    });
-    onValue(ref(db, "location"), (snap) => {
-      lastLocation = snap.val() || "";
-      el("temiLocation").textContent = lastLocation || "—";
-    });
-    onValue(ref(db, "robot_state"), (snap) => {
-      lastRobotState = snap.val() || "";
-      el("temiRobotState").textContent = lastRobotState || "—";
-      // `showDispatch` depends on status/robot_state; re-render order cards live.
-      renderOrders();
-    });
-
-    function temiIsBusy() {
-      const rs = String(lastRobotState || "").toLowerCase().trim();
-      if (rs) return rs !== "idle";
-      const s = (lastStatus || "").toLowerCase();
-      return s.includes("moving") || s.includes("preparing") || s.includes("blocked");
-    }
-
-    async function setLocationCmd(loc, statusHint) {
-      if (temiIsBusy()) {
-        const ok = confirm("Temi looks busy (moving/preparing). Send a new command anyway?");
-        if (!ok) return;
-      }
-      try {
-        await set(ref(db, "location"), loc);
-        if (statusHint) {
-          await set(ref(db, "status"), statusHint);
-        }
-      } catch (e) {
-        console.error(e);
-        alert("Could not send command (check Firebase rules).");
-      }
-    }
-
-    el("btnSendManual").addEventListener("click", () => {
-      const loc = el("selManualLocation").value;
-      const hint =
-        loc === "home base"
-          ? "admin_manual_to_charging"
-          : loc === "pantry"
-            ? "admin_manual_to_pantry"
-            : "admin_manual_to_gaming";
-      setLocationCmd(loc, hint);
-    });
-    el("btnResetIdle").addEventListener("click", async () => {
-      if (temiIsBusy()) {
-        const ok = confirm("Temi looks busy. Reset anyway?");
-        if (!ok) return;
-      }
-      try {
-        await set(ref(db, "location"), "none");
-        await set(ref(db, "status"), "idle");
-        await set(ref(db, "robot_state"), "idle");
-        await set(ref(db, "active_order_id"), "");
-      } catch (e) {
-        console.error(e);
-        alert("Reset failed (check Firebase rules).");
-      }
-    });
-
-    // Inventory table
-    let inventory = {};
-    /** @type {string | null} */
-    let editingSku = null;
-
-    onValue(
-      ref(db, "inventory"),
-      (snap) => {
-        inventory = snap.val() || {};
-        if (editingSku && !Object.prototype.hasOwnProperty.call(inventory, editingSku)) {
-          editingSku = null;
-        }
-        renderInventory();
-      },
-      (err) => showErr("Could not read inventory. Check rules.")
-    );
-
-    function renderInventory() {
-      const body = el("invBody");
-      if (!body) return;
-      body.innerHTML = "";
-      const keys = Object.keys(inventory || {}).sort((a, b) =>
-        String(inventory[a]?.name || a).localeCompare(String(inventory[b]?.name || b))
-      );
-      keys.forEach((sku) => {
-        const it = inventory[sku] || {};
-        const qty = Number(it.quantity) || 0;
-        const em = displayEmojiForItem(it);
-        const title = `${em} ${it.name || sku}`;
-
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>
-            <div class="fw-semibold">${escapeHtml(title)}</div>
-            <div class="muted small">${escapeHtml(sku)}</div>
-          </td>
-          <td class="qty">
-            ${qty === 0 ? `<span class="out">Out of Stock</span>` : escapeHtml(String(qty))}
-          </td>
-          <td>
-            <div class="inv-actions d-flex flex-wrap gap-2 align-items-center">
-              <button type="button" class="btn btn-sm btn-outline-light btn-sub" data-sku="${escapeHtmlAttr(sku)}" ${qty === 0 ? "disabled" : ""} title="Decrease by 1">−</button>
-              <button type="button" class="btn btn-sm btn-accent text-white btn-add" data-sku="${escapeHtmlAttr(sku)}" title="Increase by 1">+</button>
-              <button type="button" class="btn btn-sm btn-outline-info btn-inv-edit" data-sku="${escapeHtmlAttr(sku)}" title="Edit name, emoji, category, image">✏️</button>
-              <button type="button" class="btn btn-sm btn-outline-danger btn-inv-delete" data-sku="${escapeHtmlAttr(sku)}" title="Remove item">🗑</button>
-            </div>
-          </td>
-        `;
-        body.appendChild(tr);
-
-        if (editingSku === sku) {
-          const name0 = escapeHtmlAttr(it.name || "");
-          const emoji0 = escapeHtmlAttr(it.emoji || "");
-          const cat0 = it.category === "snack" ? "snack" : "beverage";
-          const img0 = escapeHtmlAttr(
-            typeof it.imageUrl === "string" ? it.imageUrl : ""
-          );
-          const trEdit = document.createElement("tr");
-          trEdit.dataset.invEdit = sku;
-          trEdit.innerHTML = `
-            <td colspan="3" class="p-0 border-0">
-              <div class="inv-edit-panel m-2 ms-0 me-0">
-                <div class="small fw-semibold mb-2">Edit item <span class="muted">(${escapeHtml(sku)})</span></div>
-                <div class="row g-2 align-items-end">
-                  <div class="col-12 col-md-4">
-                    <label class="form-label muted small mb-1">Name</label>
-                    <input type="text" class="form-control form-control-sm inv-form-control inv-in-name" maxlength="120" value="${name0}" />
-                  </div>
-                  <div class="col-6 col-md-2">
-                    <label class="form-label muted small mb-1">Emoji</label>
-                    <input type="text" class="form-control form-control-sm inv-form-control inv-in-emoji" maxlength="16" value="${emoji0}" placeholder="📦 if empty" />
-                    <div class="muted small mt-1" style="font-size: 0.65rem;">Leave blank to use 📦 on the list & customer (when no image).</div>
-                  </div>
-                  <div class="col-6 col-md-2">
-                    <label class="form-label muted small mb-1">Category</label>
-                    <select class="form-select form-select-sm inv-form-control inv-in-category">
-                      <option value="beverage" ${cat0 === "beverage" ? "selected" : ""}>beverage</option>
-                      <option value="snack" ${cat0 === "snack" ? "selected" : ""}>snack</option>
-                    </select>
-                  </div>
-                  <div class="col-12 col-md-4">
-                    <label class="form-label muted small mb-1">Image URL (optional)</label>
-                    <input type="text" class="form-control form-control-sm inv-form-control inv-in-imageurl" maxlength="2000" value="${img0}" placeholder="https://…" />
-                  </div>
-                  <div class="col-12 d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-sm btn-accent text-white btn-inv-save-edit" data-sku="${escapeHtmlAttr(sku)}">Save</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary btn-inv-cancel-edit">Cancel</button>
-                  </div>
-                </div>
-              </div>
-            </td>
-          `;
-          body.appendChild(trEdit);
-        }
-      });
-    }
-
-    function inventoryPermAlert(err, actionLabel) {
-      console.error(err);
-      const code = err?.code || "";
-      const msg = err?.message || String(err);
-      const isPerm =
-        code === "permission-denied" ||
-        /permission|PERMISSION_DENIED/i.test(msg);
-      alert(
-        isPerm
-          ? `Permission denied (${actionLabel}). In Firebase Console → Realtime Database → Rules, allow writes to inventory for signed-in admins. Technical: ${msg}`
-          : `${actionLabel} failed: ${msg}`
-      );
-    }
-
-    el("btnAddInventory").addEventListener("click", async () => {
-      const skuRaw = normalizeSkuInput(el("addSku").value);
-      const name = (el("addName").value || "").trim();
-      const emoji = (el("addEmoji").value || "").trim();
-      const category = el("addCategory").value;
-      const qtyRaw = el("addQty").value;
-      const imageUrl = (el("addImageUrl").value || "").trim();
-
-      if (!isValidSku(skuRaw)) {
-        alert(
-          "SKU is required and must use only lowercase letters, numbers, underscores, and hyphens (e.g. orange_juice)."
-        );
-        return;
-      }
-      if (!name) {
-        alert("Name is required.");
-        return;
-      }
-      if (category !== "beverage" && category !== "snack") {
-        alert("Category must be beverage or snack.");
-        return;
-      }
-      const qty = Math.max(0, Math.min(99999, Math.floor(Number(qtyRaw) || 0)));
-
-      const btn = el("btnAddInventory");
-      btn.disabled = true;
-      try {
-        const snapNew = await get(ref(db, `inventory/${skuRaw}`));
-        if (snapNew.val() != null) {
-          alert(`SKU "${skuRaw}" already exists. Choose a different SKU.`);
-          return;
-        }
-
-        /** @type {Record<string, unknown>} */
-        const payload = {
-          name,
-          emoji,
-          category,
-          quantity: qty,
-          customizable: false,
-        };
-        if (imageUrl) payload.imageUrl = imageUrl;
-        else payload.imageUrl = "";
-
-        await set(ref(db, `inventory/${skuRaw}`), payload);
-        el("addSku").value = "";
-        el("addName").value = "";
-        el("addEmoji").value = "";
-        el("addCategory").value = "beverage";
-        el("addQty").value = "10";
-        el("addImageUrl").value = "";
-      } catch (err) {
-        inventoryPermAlert(err, "Add item");
-      } finally {
-        btn.disabled = false;
-      }
-    });
-
-    el("invBody").addEventListener("click", async (e) => {
-      const t = /** @type {HTMLElement} */ (e.target);
-      if (!t) return;
-
-      const del = t.closest && t.closest(".btn-inv-delete");
-      if (del && del.dataset.sku) {
-        const sku = del.dataset.sku;
-        const it = inventory[sku] || {};
-        const label = it.name || sku;
-        if (
-          !confirm(
-            `Remove "${label}" (${sku}) from inventory?\n\nThis cannot be undone. Existing orders that reference this SKU may still show the old code until cleared.`
-          )
-        ) {
-          return;
-        }
-        del.disabled = true;
-        try {
-          await remove(ref(db, `inventory/${sku}`));
-          if (editingSku === sku) editingSku = null;
-        } catch (err) {
-          inventoryPermAlert(err, "Delete item");
-        } finally {
-          del.disabled = false;
-        }
-        return;
-      }
-
-      const editBtn = t.closest && t.closest(".btn-inv-edit");
-      if (editBtn && editBtn.dataset.sku) {
-        editingSku = editBtn.dataset.sku;
-        renderInventory();
-        return;
-      }
-
-      const cancelBtn = t.closest && t.closest(".btn-inv-cancel-edit");
-      if (cancelBtn) {
-        editingSku = null;
-        renderInventory();
-        return;
-      }
-
-      const saveBtn = t.closest && t.closest(".btn-inv-save-edit");
-      if (saveBtn && saveBtn.dataset.sku) {
-        const sku = saveBtn.dataset.sku;
-        const row = t.closest && t.closest("tr[data-inv-edit]");
-        if (!row) return;
-        const name = row.querySelector(".inv-in-name")?.value?.trim() ?? "";
-        const emoji = row.querySelector(".inv-in-emoji")?.value?.trim() ?? "";
-        const category = row.querySelector(".inv-in-category")?.value ?? "beverage";
-        const imageUrl = row.querySelector(".inv-in-imageurl")?.value?.trim() ?? "";
-
-        if (!name) {
-          alert("Name is required.");
-          return;
-        }
-        if (category !== "beverage" && category !== "snack") {
-          alert("Invalid category.");
-          return;
-        }
-
-        saveBtn.disabled = true;
-        try {
-          await update(ref(db, `inventory/${sku}`), {
-            name,
-            emoji,
-            category,
-            imageUrl: imageUrl || "",
+      // If sending to pantry and there is a closed round — auto start trip
+      if (loc === "pantry") {
+        const closed = Object.entries(allRounds).find(([,r]) => r.status === "closed");
+        if (closed) {
+          const [roundId, round] = closed;
+          await update(ref(db, "rounds/" + roundId), { status: "locked", lockedAt: serverTimestamp() });
+          await set(ref(db, "current_delivering_round"), roundId);
+          await set(ref(db, "active_order_id"), roundId);
+          const updates = {};
+          Object.keys(round.orderIds || {}).forEach(oid => {
+            updates["orders/" + oid + "/status"] = "ongoing";
+            updates["orders/" + oid + "/startedAt"] = serverTimestamp();
           });
-          editingSku = null;
-          renderInventory();
-        } catch (err) {
-          inventoryPermAlert(err, "Save item");
-        } finally {
-          saveBtn.disabled = false;
+          if (Object.keys(updates).length > 0) await update(ref(db, "/"), updates);
         }
-        return;
       }
+    } catch (e) { console.error("Could not send command.", e); }
+  });
+  el("btnResetIdle").addEventListener("click", async () => {
+    try {
+      await set(ref(db, "location"), "none");
+      await set(ref(db, "status"), "idle");
+      await set(ref(db, "robot_state"), "idle");
+      await set(ref(db, "active_order_id"), "");
+      await set(ref(db, "current_delivering_round"), "");
+    } catch (e) { console.error("Reset failed.", e); }
+  });
 
-      const btn = t.closest && t.closest(".btn-add");
-      const sub = t.closest && t.closest(".btn-sub");
-      const targetBtn = btn || sub;
-      if (!targetBtn) return;
-      const sku = targetBtn.dataset.sku;
-      if (!sku) return;
-      const delta = btn ? 1 : -1;
-      targetBtn.disabled = true;
-      try {
-        await runTransaction(ref(db, `inventory/${sku}/quantity`), (cur) => {
-          const q = Number(cur) || 0;
-          return Math.max(0, q + delta);
-        });
-      } catch (err) {
-        inventoryPermAlert(err, "Update quantity");
-      } finally {
-        targetBtn.disabled = false;
-      }
-    });
+  // ── Rounds panel ──
+  let countdownInterval = null;
 
-    // Notification
-    const notifModalEl = document.getElementById("notifModal");
-    const notifModal = new bootstrap.Modal(notifModalEl, { backdrop: "static" });
-    let notificationPending = false;
-    let latestOrderId = null;
+  function renderRoundsPanel() {
+    if (activeTab !== "rounds") return;
+    const emptyEl = el("roundsEmpty");
+    const hasAny = Object.keys(allRounds).length > 0;
+    if (emptyEl) emptyEl.classList.toggle("d-none", hasAny);
 
-    onValue(ref(db, "admin/notification_pending"), (snap) => {
-      notificationPending = Boolean(snap.val());
-      el("notifState").textContent = notificationPending ? "pending" : "none";
-      if (notificationPending && auth.currentUser) {
-        notifModal.show();
-      }
-    });
-    onValue(ref(db, "admin/latest_order_id"), (snap) => {
-      latestOrderId = snap.val() || null;
-    });
-    el("btnNotifOk").addEventListener("click", () => {
-      showTab("orders");
-      set(ref(db, "admin/notification_pending"), false);
-    });
+    const openRound = currentRoundId ? allRounds[currentRoundId] : null;
+    renderOpenRound(currentRoundId, openRound);
 
-    // Orders page
-    let orders = {};
-    onValue(ref(db, "orders"), (snap) => {
-      orders = snap.val() || {};
-      renderOrders();
-    }, () => showErr("Could not read orders. Check rules."));
+    const closed = Object.entries(allRounds).filter(([,r]) => r.status === "closed").sort(([,a],[,b]) => (a.closedAt||0) - (b.closedAt||0));
+    renderQueueSection(closed);
 
-    function orderStatus(o) {
-      return String(o?.status || "pending").toLowerCase();
+    const active = Object.entries(allRounds).filter(([,r]) => r.status === "locked" || r.status === "delivering");
+    renderActiveSection(active);
+
+    const done = Object.entries(allRounds).filter(([,r]) => r.status === "done" || r.status === "cancelled").sort(([,a],[,b]) => (b.closedAt||0) - (a.closedAt||0));
+    renderDoneSection(done);
+  }
+
+  function renderOpenRound(roundId, round) {
+    const el2 = el("roundOpenSection"); if (!el2) return;
+    if (!round || round.status !== "open") { el2.innerHTML = ""; if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; } return; }
+    const orderCount = Object.keys(round.orderIds || {}).length;
+    const itemCount = Object.values(round.itemManifest || {}).reduce((a,b) => a + Number(b), 0);
+    el2.innerHTML = `<div class="round-card open-r">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+          <span class="badge text-bg-success mb-1">Collecting orders</span>
+          <div>Closes in <span class="countdown" id="cdTimer">--:--</span></div>
+          <div class="text-secondary small">${orderCount} order${orderCount!==1?"s":""} &middot; ${itemCount} items</div>
+        </div>
+        <button class="btn btn-sm btn-outline-warning" onclick="closeRoundNow('${escapeHtmlAttr(roundId)}')">Close now</button>
+      </div>
+      <div class="round-manifest">${formatManifest(round.itemManifest)}</div>
+      <div class="d-flex gap-2 mt-2 flex-wrap">
+        <button class="btn btn-sm btn-accent text-white" disabled title="Close round first">Start trip &rarr;</button>
+        <div class="small text-secondary align-self-center">Close round first to enable</div>
+      </div>
+    </div>`;
+    startCountdown(round.deadline);
+  }
+
+  function startCountdown(deadline) {
+    if (countdownInterval) clearInterval(countdownInterval);
+    function tick() {
+      const timerEl = document.getElementById("cdTimer");
+      if (!timerEl) { clearInterval(countdownInterval); return; }
+      const rem = Math.max(0, deadline - Date.now());
+      const m = Math.floor(rem / 60000);
+      const s = Math.floor((rem % 60000) / 1000);
+      timerEl.textContent = m + ":" + (s < 10 ? "0" : "") + s;
+      timerEl.classList.toggle("warn", rem < 60000);
+      if (rem === 0) { clearInterval(countdownInterval); autoCloseRound(); }
     }
+    tick();
+    countdownInterval = setInterval(tick, 1000);
+  }
 
-    function isActiveStatus(st) {
-      // Only orders that are currently being served / dispatched.
-      return st === "ongoing";
-    }
-
-    function activeOrderIdNow() {
-      const keys = Object.keys(orders || {});
-      for (const id of keys) {
-        const st = orderStatus(orders[id]);
-        if (isActiveStatus(st)) return id;
-      }
-      return null;
-    }
-
-    function itemsText(items) {
-      if (!items) return "—";
-      return Object.keys(items)
-        .filter((k) => Number(items[k]) > 0)
-        .map((k) => `${inventory?.[k]?.name || k} ×${items[k]}`)
-        .join(", ");
-    }
-
-    function renderOrders() {
-      const list = el("ordersList");
-      const empty = el("ordersEmpty");
-      list.innerHTML = "";
-
-      const ids = Object.keys(orders || {});
-      if (ids.length === 0) {
-        empty.classList.remove("d-none");
-        return;
-      }
-      empty.classList.add("d-none");
-
-      // ordering: pending first, then accepted, then active, then others
-      ids.sort((a, b) => {
-        const sa = orderStatus(orders[a]);
-        const sb = orderStatus(orders[b]);
-        const rank = (s) =>
-          s === "pending" ? 0 : s === "accepted" ? 1 : isActiveStatus(s) ? 2 : 3;
-        const ra = rank(sa);
-        const rb = rank(sb);
-        if (ra !== rb) return ra - rb;
-        return a.localeCompare(b);
-      });
-
-      const activeId = activeOrderIdNow();
-      ids.forEach((id) => {
-        const o = orders[id] || {};
-        const st = orderStatus(o);
-        const card = document.createElement("div");
-        card.className = "order-card";
-        if (id === activeId) card.classList.add("active");
-
-        const badge =
-          st === "pending"
-            ? `<span class="badge text-bg-warning">pending</span>`
-            : st === "accepted"
-              ? `<span class="badge text-bg-info">accepted</span>`
-              : st === "ongoing"
-                ? `<span class="badge text-bg-success">ongoing</span>`
-                : st === "complete" || st === "delivered"
-                  ? `<span class="badge text-bg-secondary">${st}</span>`
-                  : st === "cancelled" || st === "canceled"
-                    ? `<span class="badge text-bg-danger">cancelled</span>`
-                    : `<span class="badge text-bg-secondary">${st}</span>`;
-
-        const canAccept = st === "pending";
-        const rs = String(lastRobotState || "").toLowerCase().trim();
-        const ss = String(lastStatus || "").toLowerCase();
-        const isAtPantry = rs === "arrived_pantry" || ss.includes("arrived_pantry");
-        // Allow starting the next order even if Temi is already waiting at pantry.
-        const canStartTrip = st === "accepted" && !activeId && (!temiIsBusy() || isAtPantry);
-        const startTripDisabledReason = activeId
-          ? "Temi is busy with another active order"
-          : temiIsBusy()
-            ? "Temi is currently moving/preparing"
-            : "";
-
-        const showDispatch = st === "ongoing" && isAtPantry;
-        // If Temi is already waiting at pantry and an accepted order is ready,
-        // show a single action to start + send to gaming (reduces clicks).
-        const showServeFromPantry = st === "accepted" && isAtPantry && !activeId;
-
-        card.innerHTML = `
-          <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+  function renderQueueSection(closed) {
+    const el2 = el("roundQueueSection"); if (!el2) return;
+    if (closed.length === 0) { el2.innerHTML = ""; return; }
+    const isIdle = !temiIsBusy();
+    const noActive = !currentDeliveringRound;
+    el2.innerHTML = `<div class="section-sub">Queue — waiting for Temi</div>` +
+      closed.map(([id, round]) => {
+        const orderCount = Object.keys(round.orderIds || {}).length;
+        const canStart = isIdle && noActive;
+        const reason = !isIdle ? "Temi is busy" : !noActive ? "Another round is being delivered" : "";
+        return `<div class="round-card closed-r">
+          <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
             <div>
-              <div class="fw-semibold">Order …${id.slice(-6)} ${badge}</div>
-              <div class="muted small mt-1">${itemsText(o.items)}</div>
+              <span class="badge text-bg-info mb-1">Ready to dispatch</span>
+              <div class="fw-semibold">${orderCount} order${orderCount!==1?"s":""}</div>
+              <div class="text-secondary small">Closed ${fmtTime(round.closedAt)}</div>
             </div>
-            <div class="order-actions d-flex flex-wrap gap-2">
-              <button class="btn btn-sm btn-outline-info btn-accept" data-id="${id}" ${canAccept ? "" : "disabled"} title="Mark accepted (does not move Temi)">Accept</button>
-              <button class="btn btn-sm btn-outline-secondary" disabled>Decline</button>
-              <button class="btn btn-sm btn-accent text-white btn-start" data-id="${id}" ${canStartTrip ? "" : "disabled"} title="${startTripDisabledReason}">Start trip</button>
-              ${showDispatch ? `<button class="btn btn-sm btn-outline-info btn-dispatch" data-id="${id}">Accept</button>` : ``}
-              ${showServeFromPantry ? `<button class="btn btn-sm btn-outline-info btn-serve" data-id="${id}" title="Start this order and send Temi to gaming">Accept</button>` : ``}
-            </div>
+            <button class="btn btn-sm btn-accent text-white" ${canStart?"":"disabled"} onclick="startTrip('${escapeHtmlAttr(id)}')">Start trip &rarr;</button>
           </div>
-        `;
-        list.appendChild(card);
-      });
-    }
+          <div class="round-manifest">${formatManifest(round.itemManifest)}</div>
+          ${reason ? `<div class="text-secondary small">${escapeHtml(reason)}</div>` : ""}
+        </div>`;
+      }).join("");
+  }
 
-    /**
-     * Legacy: reserve full order lines in one transaction (orders without `inventoryDebitedAt`).
-     * New customer orders debit stock at submit time; Accept only updates status + Temi flow.
-     */
-    async function reserveInventoryOrThrow(items) {
-      const req = Object.keys(items || {})
-        .filter((k) => Number(items[k]) > 0)
-        .map((k) => ({ sku: k, n: Number(items[k]) || 0 }));
+  // ── FIX: renderActiveSection — skip rounds with 0 orders ──
+  function renderActiveSection(active) {
+    const el2 = el("roundActiveSection"); if (!el2) return;
 
-      if (req.length === 0) return;
-
-      let failReason = null;
-      const res = await runTransaction(ref(db, "inventory"), (inv) => {
-        if (!inv || typeof inv !== "object") {
-          failReason = "Inventory not available.";
-          return;
+    // Filter out rounds with 0 orders — clean them up silently
+    const validActive = active.filter(([id, round]) => {
+      const orderCount = Object.keys(round.orderIds || {}).length;
+      if (orderCount === 0) {
+        // Delete empty round from Firebase silently
+        set(ref(db, "rounds/" + id), null).catch(e => console.error("Cleanup empty round:", e));
+        if (currentDeliveringRound === id) {
+          set(ref(db, "current_delivering_round"), "").catch(() => {});
         }
-        for (const { sku, n } of req) {
-          const q = Number(inv?.[sku]?.quantity) || 0;
-          if (q < n) {
-            const name = inv?.[sku]?.name || sku;
-            failReason = `${name} is out of stock (need ${n}, have ${q}).`;
-            return;
-          }
-        }
-        for (const { sku, n } of req) {
-          const q = Number(inv?.[sku]?.quantity) || 0;
-          inv[sku] = inv[sku] || {};
-          inv[sku].quantity = q - n;
-        }
-        return inv;
-      });
-
-      if (!res.committed) {
-        throw new Error(failReason || "Not enough stock to accept this order.");
+        return false;
       }
-    }
-
-    el("ordersList").addEventListener("click", async (e) => {
-      const t = e.target;
-      const accept = t.closest && t.closest(".btn-accept");
-      const start = t.closest && t.closest(".btn-start");
-      const dispatch = t.closest && t.closest(".btn-dispatch");
-      const serve = t.closest && t.closest(".btn-serve");
-      if (!accept && !start && !dispatch && !serve) return;
-
-      const id = (accept || start || dispatch || serve).dataset.id;
-      if (!id) return;
-
-      if (accept) {
-        const o = orders[id];
-        if (!o) return;
-
-        accept.disabled = true;
-        try {
-          if (!o.inventoryDebitedAt) {
-            await reserveInventoryOrThrow(o.items || {});
-          }
-
-          await update(ref(db, `orders/${id}`), {
-            status: "accepted",
-            acceptedAt: serverTimestamp(),
-            ...(o.inventoryDebitedAt ? {} : { inventoryDebitedAt: serverTimestamp() }),
-          });
-        } catch (err) {
-          console.error(err);
-          alert(err?.message || "Accept failed. Check Firebase rules.");
-        } finally {
-          accept.disabled = false;
-        }
-      }
-
-      if (start) {
-        if (activeOrderIdNow()) {
-          alert("Temi is busy. Start trip after current order completes.");
-          return;
-        }
-        if (temiIsBusy()) {
-          const rs = String(lastRobotState || "").toLowerCase().trim();
-          const ss = String(lastStatus || "").toLowerCase();
-          const isAtPantry = rs === "arrived_pantry" || ss.includes("arrived_pantry");
-          if (!isAtPantry) {
-            alert("Temi is currently moving/preparing. Try again when idle.");
-            return;
-          }
-        }
-        const o = orders[id];
-        if (!o) return;
-        start.disabled = true;
-        try {
-          // Promote to active
-          await update(ref(db, `orders/${id}`), {
-            status: "ongoing",
-            startedAt: serverTimestamp(),
-          });
-
-          // Track the active order so Temi can mark it complete on delivery OK.
-          await set(ref(db, "active_order_id"), id);
-
-          const rs2 = String(lastRobotState || "").toLowerCase().trim();
-          const ss2 = String(lastStatus || "").toLowerCase();
-          const isAtPantry2 = rs2 === "arrived_pantry" || ss2.includes("arrived_pantry");
-          if (isAtPantry2) {
-            // Already at pantry: don't re-send a pantry command; operator can dispatch to gaming.
-            await set(ref(db, "status"), "admin_started_at_pantry");
-          } else {
-            // Start pickup leg to pantry
-            await set(ref(db, "location"), "pantry");
-            await set(ref(db, "status"), "admin_sent_to_pantry");
-          }
-        } catch (err) {
-          console.error(err);
-          alert("Start trip failed. Check Firebase rules.");
-        } finally {
-          start.disabled = false;
-        }
-      }
-
-      if (dispatch) {
-        dispatch.disabled = true;
-        try {
-          await set(ref(db, "location"), "gaming");
-          await set(ref(db, "status"), "admin_dispatched_to_gaming");
-        } catch (err) {
-          console.error(err);
-          alert("Dispatch failed. Check Firebase rules.");
-        } finally {
-          dispatch.disabled = false;
-        }
-      }
-
-      // One-click serve when Temi is already waiting at pantry:
-      // accepted -> ongoing + active_order_id, then send to gaming.
-      if (serve) {
-        if (activeOrderIdNow()) {
-          alert("Temi is busy. Serve the next order after current one completes.");
-          return;
-        }
-        const rs = String(lastRobotState || "").toLowerCase().trim();
-        const ss = String(lastStatus || "").toLowerCase();
-        const isAtPantry = rs === "arrived_pantry" || ss.includes("arrived_pantry");
-        if (!isAtPantry) {
-          alert("Temi is not at pantry yet. Use Start trip first.");
-          return;
-        }
-        serve.disabled = true;
-        try {
-          await update(ref(db, `orders/${id}`), {
-            status: "ongoing",
-            startedAt: serverTimestamp(),
-          });
-          await set(ref(db, "active_order_id"), id);
-          await set(ref(db, "location"), "gaming");
-          await set(ref(db, "status"), "admin_dispatched_to_gaming");
-        } catch (err) {
-          console.error(err);
-          alert("Serve failed. Check Firebase rules.");
-        } finally {
-          serve.disabled = false;
-        }
-      }
+      return true;
     });
 
-    // Connection pill
-    el("spinConn").classList.remove("d-none");
-    el("connText").textContent = "Connected";
-    el("spinConn").classList.add("d-none");
-  </script>
+    if (validActive.length === 0) { el2.innerHTML = ""; return; }
+
+    el2.innerHTML = validActive.map(([id, round]) => {
+      const atPantry = isAtPantry();
+      const atGaming = isAtGaming();
+      const orderCount = Object.keys(round.orderIds || {}).length;
+      const stLabel = atGaming ? "Customers collecting — waiting for OK" : atPantry ? "Temi at pantry — load items now" : "Temi en route to pantry";
+      const canDispatch = atPantry && !atGaming;
+      return `<div class="round-card active-r">
+        <span class="badge text-bg-primary mb-1">${escapeHtml(stLabel)}</span>
+        <div class="fw-semibold">${orderCount} order${orderCount!==1?"s":""}</div>
+        <div class="round-manifest">${formatManifest(round.itemManifest)}</div>
+        <div class="d-flex gap-2 mt-2 flex-wrap">
+          <button class="btn btn-sm btn-accent text-white" ${canDispatch?"":"disabled"} onclick="dispatchRound('${escapeHtmlAttr(id)}')">Dispatch to gaming &rarr;</button>
+          ${!atPantry && !atGaming ? `<div class="small text-secondary align-self-center">Enabled when Temi arrives at pantry</div>` : ""}
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  function renderDoneSection(done) {
+    const el2 = el("roundDoneSection"); if (!el2) return;
+    if (done.length === 0) { el2.innerHTML = ""; return; }
+    el2.innerHTML = `<div class="section-sub">Completed</div>` +
+      done.map(([id, round]) => {
+        const orderCount = Object.keys(round.orderIds || {}).length;
+        const label = round.status === "done" ? "Done" : "Cancelled";
+        return `<div class="round-card done-r"><div class="d-flex justify-content-between"><span class="small text-secondary">${label} &middot; ${orderCount} orders &middot; ${fmtTime(round.closedAt)}</span></div></div>`;
+      }).join("");
+  }
+
+  // ── Round actions ──
+
+  // ── FIX: closeRoundNow — delete round if 0 orders ──
+  window.closeRoundNow = async function(roundId) {
+    try {
+      const snap = await get(ref(db, "rounds/" + roundId));
+      const round = snap.val();
+      if (!round) return;
+
+      const orderCount = Object.keys(round.orderIds || {}).length;
+
+      if (orderCount === 0) {
+        // No orders — delete round entirely, don't show it in queue
+        await set(ref(db, "rounds/" + roundId), null);
+        await runTransaction(ref(db, "current_round_id"), cur => cur === roundId ? "" : cur);
+        return;
+      }
+
+      // Has orders — normal close flow
+      await runTransaction(ref(db, "rounds/" + roundId + "/status"), cur => cur === "open" ? "closed" : undefined);
+      await set(ref(db, "rounds/" + roundId + "/closedAt"), serverTimestamp());
+      await runTransaction(ref(db, "current_round_id"), cur => cur === roundId ? "" : cur);
+    } catch (e) { console.error(e); }
+  };
+
+  // ── FIX: autoCloseRound — delete round if 0 orders ──
+  async function autoCloseRound() {
+    if (!currentRoundId) return;
+    try {
+      const snap = await get(ref(db, "rounds/" + currentRoundId));
+      const round = snap.val();
+      if (!round || round.status !== "open") return;
+
+      const orderCount = Object.keys(round.orderIds || {}).length;
+
+      if (orderCount === 0) {
+        // No orders — delete silently, no trip needed
+        await set(ref(db, "rounds/" + currentRoundId), null);
+        await runTransaction(ref(db, "current_round_id"), cur => cur === currentRoundId ? "" : cur);
+        return;
+      }
+
+      // Has orders — normal close
+      await runTransaction(ref(db, "rounds/" + currentRoundId + "/status"), cur => cur === "open" ? "closed" : undefined);
+      await set(ref(db, "rounds/" + currentRoundId + "/closedAt"), serverTimestamp());
+      await runTransaction(ref(db, "current_round_id"), cur => cur === currentRoundId ? "" : cur);
+    } catch (e) { console.error(e); }
+  }
+
+  window.startTrip = async function(roundId) {
+    const round = allRounds[roundId]; if (!round) return;
+    try {
+      await update(ref(db, "rounds/" + roundId), { status: "locked", lockedAt: serverTimestamp() });
+      await set(ref(db, "current_delivering_round"), roundId);
+      await set(ref(db, "active_order_id"), roundId);
+      await set(ref(db, "location"), "pantry");
+      await set(ref(db, "status"), "admin_sent_to_pantry");
+      const updates = {};
+      Object.keys(round.orderIds || {}).forEach(oid => { updates["orders/" + oid + "/status"] = "ongoing"; updates["orders/" + oid + "/startedAt"] = serverTimestamp(); });
+      if (Object.keys(updates).length > 0) await update(ref(db, "/"), updates);
+    } catch (e) { console.error(e); alert("Start trip failed: " + e.message); }
+  };
+
+  window.dispatchRound = async function(roundId) {
+    try {
+      await set(ref(db, "location"), "gaming");
+      await set(ref(db, "status"), "admin_dispatched_to_gaming");
+      await update(ref(db, "rounds/" + roundId), { status: "delivering" });
+    } catch (e) { console.error(e); alert("Dispatch failed: " + e.message); }
+  };
+
+  // Auto-close interval
+  setInterval(async () => {
+    if (!currentRoundId || !auth.currentUser) return;
+    try {
+      const snap = await get(ref(db, "rounds/" + currentRoundId));
+      const round = snap.val();
+      if (round && round.status === "open" && round.deadline < Date.now()) await autoCloseRound();
+    } catch (e) { console.error(e); }
+  }, 15000);
+
+  // ── History tab ──
+  let activeHistTab = "all";
+
+  window.switchHistTab = function(tab) {
+    activeHistTab = tab;
+    el("hpAll").style.display = tab === "all" ? "block" : "none";
+    el("hpPopular").style.display = tab === "popular" ? "block" : "none";
+    el("hpCancelled").style.display = tab === "cancelled" ? "block" : "none";
+    el("htabAll").classList.toggle("active", tab === "all");
+    el("htabPopular").classList.toggle("active", tab === "popular");
+    el("htabCancelled").classList.toggle("active", tab === "cancelled");
+    renderHistoryPanel();
+  };
+
+  function renderHistoryPanel() {
+    if (activeTab !== "history") return;
+    if (activeHistTab === "all") renderHistAll();
+    else if (activeHistTab === "popular") renderHistPopular();
+    else renderHistCancelled();
+  }
+
+  function renderHistAll() {
+    const container = el("hpAll"); if (!container) return;
+    const today = new Date().toDateString();
+    const allOrdersArr = Object.values(orders);
+    const todayOrders = allOrdersArr.filter(o => { const d = new Date(o.completedAt || o.createdAt || 0); return d.toDateString() === today; });
+    const todayRounds = Object.values(allRounds).filter(r => { const d = new Date(r.closedAt || r.deadline || 0); return r.status === "done" && d.toDateString() === today; });
+    const cancelledToday = allOrdersArr.filter(o => ["cancelled","canceled"].includes((o.status||"").toLowerCase()) && new Date(o.cancelledAt||o.createdAt||0).toDateString() === today).length;
+    const itemsDelivered = todayRounds.reduce((sum, r) => sum + Object.values(r.itemManifest || {}).reduce((a,b) => a + Number(b), 0), 0);
+    let html = `<div class="row g-2 mb-3">
+      <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-val">${todayOrders.length}</div><div class="stat-lbl">Orders today</div></div></div>
+      <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-val">${todayRounds.length}</div><div class="stat-lbl">Rounds done</div></div></div>
+      <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-val">${itemsDelivered}</div><div class="stat-lbl">Items delivered</div></div></div>
+      <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-val">${cancelledToday}</div><div class="stat-lbl">Cancelled</div></div></div>
+    </div>`;
+    const doneRounds = Object.entries(allRounds).filter(([,r]) => r.status === "done").sort(([,a],[,b]) => (b.closedAt||0) - (a.closedAt||0));
+    if (doneRounds.length === 0) { html += "<p class='text-secondary small'>No completed rounds yet.</p>"; }
+    else {
+      doneRounds.forEach(([rid, round]) => {
+        const roundOrders = Object.keys(round.orderIds || {}).map(oid => orders[oid]).filter(Boolean);
+        html += `<div class="round-card mb-2"><div class="fw-semibold small mb-1">Round &middot; ${fmtTime(round.closedAt)}</div><div class="round-manifest">${formatManifest(round.itemManifest)}</div>`;
+        roundOrders.forEach(o => {
+          const st = (o.status||"").toLowerCase();
+          const badge = (st === "complete" || st === "delivered") ? `<span class="badge text-bg-secondary">Delivered</span>` : `<span class="badge text-bg-danger">Cancelled</span>`;
+          const itemsText = Object.entries(o.items||{}).filter(([,q])=>Number(q)>0).map(([sku,q])=>escapeHtml(inventory[sku]?.name||sku)+" &times;"+q).join(", ");
+          html += `<div class="d-flex justify-content-between align-items-start mt-1 small"><span class="text-secondary">${itemsText}</span>${badge}</div>`;
+        });
+        html += "</div>";
+      });
+    }
+    container.innerHTML = html;
+  }
+
+  function renderHistPopular() {
+    const container = el("hpPopular"); if (!container) return;
+    const totals = {};
+    Object.values(allRounds).filter(r => r.status === "done").forEach(r => {
+      Object.entries(r.itemManifest || {}).forEach(([sku, q]) => { totals[sku] = (totals[sku] || 0) + Number(q); });
+    });
+    const sorted = Object.entries(totals).sort(([,a],[,b]) => b - a);
+    const max = sorted[0]?.[1] || 1;
+    let html = sorted.length === 0 ? "<p class='text-secondary small'>No data yet.</p>" :
+      sorted.map(([sku, count]) => {
+        const name = inventory[sku]?.name || sku;
+        const pct = Math.round((count / max) * 100);
+        return `<div class="d-flex align-items-center gap-2 mb-2"><span class="text-secondary small" style="min-width:90px">${escapeHtml(name)}</span><div class="pop-bar-wrap"><div class="pop-bar" style="width:${pct}%"></div></div><span class="text-secondary small" style="min-width:24px;text-align:right">${count}</span></div>`;
+      }).join("");
+    const lowStock = Object.entries(inventory).filter(([,item]) => Number(item.quantity) <= 2);
+    if (lowStock.length > 0) {
+      html += `<div class="section-sub mt-3">Low stock alerts</div>`;
+      lowStock.forEach(([sku, item]) => {
+        const qty = Number(item.quantity);
+        const col = qty === 0 ? "rgba(163,45,45,0.5)" : "rgba(133,79,11,0.5)";
+        const txtCol = qty === 0 ? "#f09595" : "#ef9f27";
+        html += `<div class="round-card mb-1" style="border-color:${col}"><span class="fw-semibold" style="color:${txtCol}">${escapeHtml(item.name||sku)} — ${qty===0?"Out of stock":qty+" remaining"}</span></div>`;
+      });
+    }
+    container.innerHTML = html;
+  }
+
+  function renderHistCancelled() {
+    const container = el("hpCancelled"); if (!container) return;
+    const cancelled = Object.values(orders).filter(o => ["cancelled","canceled"].includes((o.status||"").toLowerCase())).sort((a,b) => (b.cancelledAt||b.createdAt||0) - (a.cancelledAt||a.createdAt||0));
+    if (cancelled.length === 0) { container.innerHTML = "<p class='text-secondary small'>No cancelled orders.</p>"; return; }
+    container.innerHTML = cancelled.map(o => {
+      const itemsText = Object.entries(o.items||{}).filter(([,q])=>Number(q)>0).map(([sku,q])=>escapeHtml(inventory[sku]?.name||sku)+" &times;"+q).join(", ");
+      const time = fmtTime(o.cancelledAt||o.createdAt||0);
+      return `<div class="round-card mb-2"><div class="d-flex justify-content-between"><span class="small text-light">${itemsText}</span><span class="badge text-bg-danger">Cancelled</span></div><div class="text-secondary small mt-1">${time} &middot; Stock returned to inventory</div></div>`;
+    }).join("");
+  }
+
+  // ── Notification ──
+  const notifModalEl = document.getElementById("notifModal");
+  const notifModal = new bootstrap.Modal(notifModalEl, { backdrop: "static" });
+  onValue(ref(db, "admin/notification_pending"), (snap) => {
+    const pending = Boolean(snap.val());
+    el("notifState").textContent = pending ? "pending" : "none";
+    if (pending && auth.currentUser) notifModal.show();
+  });
+  el("btnNotifOk").addEventListener("click", () => { showTab("rounds"); set(ref(db, "admin/notification_pending"), false); });
+
+  // ── Inventory CRUD ──
+  let editingSku = null;
+
+  function renderInventory() {
+    const body = el("invBody"); if (!body) return;
+    body.innerHTML = "";
+    const keys = Object.keys(inventory || {}).sort((a,b) => String(inventory[a]?.name||a).localeCompare(String(inventory[b]?.name||b)));
+    keys.forEach((sku) => {
+      const it = inventory[sku] || {};
+      const qty = Number(it.quantity) || 0;
+      const em = displayEmojiForItem(it);
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td><div class="fw-semibold">${escapeHtml(em+" "+(it.name||sku))}</div><div class="muted small">${escapeHtml(sku)}</div></td>
+        <td class="qty">${qty===0?`<span class="out">Out of Stock</span>`:escapeHtml(String(qty))}</td>
+        <td><div class="inv-actions d-flex flex-wrap gap-2 align-items-center">
+          <button type="button" class="btn btn-sm btn-outline-light btn-sub" data-sku="${escapeHtmlAttr(sku)}" ${qty===0?"disabled":""}>−</button>
+          <button type="button" class="btn btn-sm btn-accent text-white btn-add" data-sku="${escapeHtmlAttr(sku)}">+</button>
+          <button type="button" class="btn btn-sm btn-outline-info btn-inv-edit" data-sku="${escapeHtmlAttr(sku)}">✏️</button>
+          <button type="button" class="btn btn-sm btn-outline-danger btn-inv-delete" data-sku="${escapeHtmlAttr(sku)}">🗑</button>
+        </div></td>`;
+      body.appendChild(tr);
+      if (editingSku === sku) {
+        const trEdit = document.createElement("tr");
+        trEdit.dataset.invEdit = sku;
+        const name0=escapeHtmlAttr(it.name||""); const emoji0=escapeHtmlAttr(it.emoji||""); const cat0=it.category==="snack"?"snack":"beverage"; const img0=escapeHtmlAttr(typeof it.imageUrl==="string"?it.imageUrl:"");
+        trEdit.innerHTML = `<td colspan="3" class="p-0 border-0"><div class="inv-edit-panel m-2 ms-0 me-0">
+          <div class="small fw-semibold mb-2">Edit <span class="muted">(${escapeHtml(sku)})</span></div>
+          <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-4"><label class="form-label muted small mb-1">Name</label><input type="text" class="form-control form-control-sm inv-form-control inv-in-name" maxlength="120" value="${name0}" /></div>
+            <div class="col-6 col-md-2"><label class="form-label muted small mb-1">Emoji</label><input type="text" class="form-control form-control-sm inv-form-control inv-in-emoji" maxlength="16" value="${emoji0}" /></div>
+            <div class="col-6 col-md-2"><label class="form-label muted small mb-1">Category</label><select class="form-select form-select-sm inv-form-control inv-in-category"><option value="beverage" ${cat0==="beverage"?"selected":""}>beverage</option><option value="snack" ${cat0==="snack"?"selected":""}>snack</option></select></div>
+            <div class="col-12 col-md-4"><label class="form-label muted small mb-1">Image URL</label><input type="text" class="form-control form-control-sm inv-form-control inv-in-imageurl" maxlength="2000" value="${img0}" /></div>
+            <div class="col-12 d-flex gap-2">
+              <button type="button" class="btn btn-sm btn-accent text-white btn-inv-save-edit" data-sku="${escapeHtmlAttr(sku)}">Save</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary btn-inv-cancel-edit">Cancel</button>
+            </div>
+          </div></div></td>`;
+        body.appendChild(trEdit);
+      }
+    });
+  }
+
+  function inventoryPermAlert(err, actionLabel) {
+    console.error(err);
+    const code = err?.code||""; const msg = err?.message||String(err);
+    const isPerm = code==="permission-denied"||/permission|PERMISSION_DENIED/i.test(msg);
+    alert(isPerm ? `Permission denied (${actionLabel}). Check Firebase rules. ${msg}` : `${actionLabel} failed: ${msg}`);
+  }
+
+  el("btnAddInventory").addEventListener("click", async () => {
+    const skuRaw = normalizeSkuInput(el("addSku").value);
+    const name = (el("addName").value||"").trim();
+    const emoji = (el("addEmoji").value||"").trim();
+    const category = el("addCategory").value;
+    const qty = Math.max(0, Math.min(99999, Math.floor(Number(el("addQty").value)||0)));
+    const imageUrl = (el("addImageUrl").value||"").trim();
+    if (!isValidSku(skuRaw)) { alert("SKU must use lowercase letters, numbers, underscores, hyphens."); return; }
+    if (!name) { alert("Name is required."); return; }
+    const btn = el("btnAddInventory"); btn.disabled = true;
+    try {
+      const snapNew = await get(ref(db, "inventory/" + skuRaw));
+      if (snapNew.val() != null) { alert(`SKU "${skuRaw}" already exists.`); return; }
+      await set(ref(db, "inventory/" + skuRaw), { name, emoji, category, quantity: qty, customizable: false, imageUrl: imageUrl || "" });
+      el("addSku").value=""; el("addName").value=""; el("addEmoji").value=""; el("addCategory").value="beverage"; el("addQty").value="10"; el("addImageUrl").value="";
+    } catch (err) { inventoryPermAlert(err, "Add item"); } finally { btn.disabled = false; }
+  });
+
+  el("invBody").addEventListener("click", async (e) => {
+    const t = e.target;
+    const del = t.closest&&t.closest(".btn-inv-delete");
+    if (del&&del.dataset.sku) {
+      const sku=del.dataset.sku; const it=inventory[sku]||{}; const label=it.name||sku;
+      if (!confirm(`Remove "${label}" (${sku})?`)) return;
+      del.disabled=true;
+      try { await remove(ref(db,"inventory/"+sku)); if(editingSku===sku)editingSku=null; } catch(err){inventoryPermAlert(err,"Delete item");} finally{del.disabled=false;}
+      return;
+    }
+    const editBtn=t.closest&&t.closest(".btn-inv-edit");
+    if(editBtn&&editBtn.dataset.sku){editingSku=editBtn.dataset.sku;renderInventory();return;}
+    const cancelBtn=t.closest&&t.closest(".btn-inv-cancel-edit");
+    if(cancelBtn){editingSku=null;renderInventory();return;}
+    const saveBtn=t.closest&&t.closest(".btn-inv-save-edit");
+    if(saveBtn&&saveBtn.dataset.sku){
+      const sku=saveBtn.dataset.sku; const row=t.closest&&t.closest("tr[data-inv-edit]"); if(!row)return;
+      const name=row.querySelector(".inv-in-name")?.value?.trim()??"";
+      const emoji=row.querySelector(".inv-in-emoji")?.value?.trim()??"";
+      const category=row.querySelector(".inv-in-category")?.value??"beverage";
+      const imageUrl=row.querySelector(".inv-in-imageurl")?.value?.trim()??"";
+      if(!name){alert("Name required.");return;}
+      saveBtn.disabled=true;
+      try{await update(ref(db,"inventory/"+sku),{name,emoji,category,imageUrl:imageUrl||""});editingSku=null;renderInventory();}catch(err){inventoryPermAlert(err,"Save item");}finally{saveBtn.disabled=false;}
+      return;
+    }
+    const addBtn=t.closest&&t.closest(".btn-add"); const subBtn=t.closest&&t.closest(".btn-sub");
+    const targetBtn=addBtn||subBtn; if(!targetBtn)return;
+    const sku=targetBtn.dataset.sku; if(!sku)return;
+    const delta=addBtn?1:-1; targetBtn.disabled=true;
+    try{await runTransaction(ref(db,"inventory/"+sku+"/quantity"),(cur)=>Math.max(0,(Number(cur)||0)+delta));}catch(err){inventoryPermAlert(err,"Update quantity");}finally{targetBtn.disabled=false;}
+  });
+
+  el("spinConn").classList.remove("d-none");
+  el("connText").textContent="Connected";
+  el("spinConn").classList.add("d-none");
+</script>
 </body>
 </html>
-

@@ -27,15 +27,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Temi map location names must match the robot's saved map exactly (see Logcat: TEMI_LOCATIONS).
- * Edit the three constants below if your map uses different labels (e.g. "Charging Area", "Gaming Zone").
- */
 public class MainActivity extends AppCompatActivity implements
         OnRobotReadyListener,
         OnGoToLocationStatusChangedListener {
 
-    /** Home / idle / charging dock — must match {@link Robot#getLocations()} exactly. */
     private static final String LOC_CHARGING = "home base";
     private static final String LOC_PANTRY = "pantry";
     private static final String LOC_GAMING = "gaming";
@@ -50,14 +45,14 @@ public class MainActivity extends AppCompatActivity implements
     private DatabaseReference ordersRef;
     private DatabaseReference activeOrderIdRef;
     private DatabaseReference robotStateRef;
+    private DatabaseReference currentDeliveringRoundRef;
+    private DatabaseReference roundsRef;
 
     private boolean isMoving = false;
     private String lastCommand = "";
     private final Handler navHandler = new Handler(Looper.getMainLooper());
-    /** Cancelled when a new navigation target arrives so stale 3s timers cannot call goTo. */
     @Nullable
     private Runnable pendingGoToRunnable;
-    /** After guest OK: delayed read of orders/; cancelled if rescheduled. */
     private final Runnable postGoodbyeOrdersReadRunnable = this::runPostGoodbyeOrdersDecision;
 
     @Override
@@ -76,6 +71,8 @@ public class MainActivity extends AppCompatActivity implements
         ordersRef = db.getReference("orders");
         activeOrderIdRef = db.getReference("active_order_id");
         robotStateRef = db.getReference("robot_state");
+        currentDeliveringRoundRef = db.getReference("current_delivering_round");
+        roundsRef = db.getReference("rounds");
 
         locRef.addValueEventListener(new ValueEventListener() {
             @Override
@@ -85,15 +82,13 @@ public class MainActivity extends AppCompatActivity implements
                     lastCommand = "";
                     return;
                 }
-
                 if (!target.equalsIgnoreCase(lastCommand) && !isMoving) {
                     checkAndNavigate(target);
                 }
             }
 
             @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-            }
+            public void onCancelled(@NonNull DatabaseError error) {}
         });
 
         btnOk.setOnClickListener(v -> onGamingOkPressed());
@@ -189,7 +184,6 @@ public class MainActivity extends AppCompatActivity implements
             txtWaiting.setText(R.string.subtitle_collect);
             txtWaiting.setVisibility(View.VISIBLE);
             locRef.setValue("none");
-
             robot.cancelAllTtsRequests();
             robot.speak(TtsRequest.create(getString(R.string.tts_gaming_delivery), false));
             showGamingOk();
@@ -197,13 +191,8 @@ public class MainActivity extends AppCompatActivity implements
         }
 
         if (equalsLoc(location, LOC_CHARGING)) {
-            statusRef.setValue("idle");
-            robotStateRef.setValue("idle");
-            statusText.setText(R.string.status_idle_home);
-            txtWaiting.setText(R.string.subtitle_idle);
-            txtWaiting.setVisibility(View.VISIBLE);
-            hideGamingOk();
-            locRef.setValue("none");
+            // ✅ FIX: check for queued closed rounds before going idle
+            checkClosedRoundsAndDecide();
             return;
         }
 
@@ -211,6 +200,46 @@ public class MainActivity extends AppCompatActivity implements
         statusRef.setValue("Arrived at " + location);
         locRef.setValue("none");
         hideGamingOk();
+    }
+
+    // ✅ Shared helper — checks closed rounds, goes to pantry or idles
+    private void checkClosedRoundsAndDecide() {
+        roundsRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot roundsSnap) {
+                boolean hasQueuedRound = false;
+                for (DataSnapshot child : roundsSnap.getChildren()) {
+                    String st = child.child("status").getValue(String.class);
+                    if ("closed".equals(st)) {
+                        hasQueuedRound = true;
+                        break;
+                    }
+                }
+                if (hasQueuedRound) {
+                    Log.d("Nav", "Closed round found — going to pantry");
+                    statusRef.setValue("queued_round_detected_going_pantry");
+                    robotStateRef.setValue("moving");
+                    locRef.setValue(LOC_PANTRY);
+                } else {
+                    Log.d("Nav", "No queued rounds — going idle");
+                    statusRef.setValue("idle");
+                    robotStateRef.setValue("idle");
+                    runOnUiThread(() -> {
+                        statusText.setText(R.string.status_idle_home);
+                        txtWaiting.setText(R.string.subtitle_idle);
+                        txtWaiting.setVisibility(View.VISIBLE);
+                        hideGamingOk();
+                    });
+                    locRef.setValue("none");
+                }
+            }
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                statusRef.setValue("idle");
+                robotStateRef.setValue("idle");
+                locRef.setValue("none");
+            }
+        });
     }
 
     private void showGamingOk() {
@@ -223,10 +252,7 @@ public class MainActivity extends AppCompatActivity implements
         btnOk.setEnabled(false);
     }
 
-    /**
-     * After delivery at Gaming: if any order is still pending, go to Pantry next; otherwise return to home base.
-     * Orders: each child under {@code orders/} may have {@code status}. Terminal = delivered, complete, cancelled.
-     */
+    // ✅ FIX: marks ALL orders in the round complete
     private void onGamingOkPressed() {
         btnOk.setEnabled(false);
         hideGamingOk();
@@ -234,97 +260,135 @@ public class MainActivity extends AppCompatActivity implements
         robot.cancelAllTtsRequests();
         robot.speak(TtsRequest.create(getString(R.string.tts_gaming_goodbye), false));
 
-        // Mark the active order complete only after Firebase confirms writes, then read orders/ (avoids stale snapshot).
-        activeOrderIdRef.addListenerForSingleValueEvent(new ValueEventListener() {
+        currentDeliveringRoundRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snap) {
-                String orderId = snap.getValue(String.class);
-                String oid = orderId == null ? "" : orderId.trim();
-                if (oid.isEmpty()) {
+                String roundId = snap.getValue(String.class);
+                String rid = roundId == null ? "" : roundId.trim();
+
+                if (rid.isEmpty()) {
                     schedulePostGoodbyeOrdersRead();
                     return;
                 }
-                Map<String, Object> updates = new HashMap<>();
-                updates.put("status", "complete");
-                updates.put("completedAt", ServerValue.TIMESTAMP);
-                ordersRef.child(oid).updateChildren(updates, (error, ref) -> {
-                    if (error != null) {
-                        Log.e("Nav", "Mark order complete failed: " + error.getMessage());
-                        schedulePostGoodbyeOrdersRead();
-                        return;
-                    }
-                    activeOrderIdRef.setValue("", (e, r) -> {
-                        if (e != null) {
-                            Log.e("Nav", "Clear active_order_id failed: " + e.getMessage());
+
+                roundsRef.child(rid).child("orderIds").addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot orderIdsSnap) {
+                        Map<String, Object> updates = new HashMap<>();
+
+                        if (orderIdsSnap.exists()) {
+                            for (DataSnapshot idSnap : orderIdsSnap.getChildren()) {
+                                String oId = idSnap.getKey();
+                                updates.put("orders/" + oId + "/status", "complete");
+                                updates.put("orders/" + oId + "/completedAt", ServerValue.TIMESTAMP);
+                            }
                         }
+
+                        updates.put("rounds/" + rid + "/status", "done");
+                        updates.put("current_delivering_round", "");
+                        updates.put("active_order_id", "");
+
+                        FirebaseDatabase.getInstance().getReference()
+                                .updateChildren(updates, (error, ref) -> {
+                                    if (error != null) {
+                                        Log.e("Nav", "Round complete failed: " + error.getMessage());
+                                    }
+                                    schedulePostGoodbyeOrdersRead();
+                                });
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        Log.e("Nav", "Read orderIds failed: " + error.getMessage());
                         schedulePostGoodbyeOrdersRead();
-                    });
+                    }
                 });
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
+                Log.e("Nav", "Read current_delivering_round failed: " + error.getMessage());
                 schedulePostGoodbyeOrdersRead();
             }
         });
     }
 
-    /** After TTS buffer, read orders once and route to pantry or home base. */
     private void schedulePostGoodbyeOrdersRead() {
         navHandler.removeCallbacks(postGoodbyeOrdersReadRunnable);
         navHandler.postDelayed(postGoodbyeOrdersReadRunnable, 1800);
     }
 
+    // ✅ FIX: check closed rounds before deciding to go home
     private void runPostGoodbyeOrdersDecision() {
-        ordersRef.addListenerForSingleValueEvent(new ValueEventListener() {
+        roundsRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                boolean pending = hasPendingOrders(snapshot);
-                if (pending) {
-                    statusRef.setValue("order_queue_next_leg_pantry");
-                    locRef.setValue(LOC_PANTRY);
-                } else {
-                    statusRef.setValue("returning_home");
-                    locRef.setValue(LOC_CHARGING);
+            public void onDataChange(@NonNull DataSnapshot roundsSnap) {
+                boolean hasQueuedRound = false;
+                for (DataSnapshot child : roundsSnap.getChildren()) {
+                    String st = child.child("status").getValue(String.class);
+                    if ("closed".equals(st)) {
+                        hasQueuedRound = true;
+                        break;
+                    }
                 }
+
+                if (hasQueuedRound) {
+                    Log.d("Nav", "Queued round found — staying at pantry");
+                    statusRef.setValue("waiting_next_round");
+                    robotStateRef.setValue("arrived_pantry");
+                    locRef.setValue("none");
+                    return;
+                }
+
+                ordersRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        boolean pending = hasPendingOrders(snapshot);
+                        if (pending) {
+                            statusRef.setValue("order_queue_next_leg_pantry");
+                            locRef.setValue(LOC_PANTRY);
+                        } else {
+                            statusRef.setValue("returning_home");
+                            locRef.setValue(LOC_CHARGING);
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        statusRef.setValue("orders_read_failed_returning_home");
+                        locRef.setValue(LOC_CHARGING);
+                    }
+                });
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                statusRef.setValue("orders_read_failed_returning_home");
                 locRef.setValue(LOC_CHARGING);
             }
         });
     }
 
-    /**
-     * True if there is at least one order that still needs a pantry pickup / delivery cycle.
-     */
     private static boolean hasPendingOrders(@Nullable DataSnapshot ordersSnapshot) {
-        if (ordersSnapshot == null || !ordersSnapshot.exists()) {
-            return false;
-        }
+        if (ordersSnapshot == null || !ordersSnapshot.exists()) return false;
         for (DataSnapshot child : ordersSnapshot.getChildren()) {
-            if (orderNeedsService(child)) {
-                return true;
-            }
+            if (orderNeedsService(child)) return true;
         }
         return false;
     }
 
     private static boolean orderNeedsService(@NonNull DataSnapshot order) {
         String st = order.child("status").getValue(String.class);
-        if (st == null || st.isEmpty()) {
-            return true;
+        if (st == null || st.isEmpty()) return true;
+        switch (st.trim().toLowerCase()) {
+            case "delivered":
+            case "complete":
+            case "cancelled":
+            case "canceled":
+            case "ongoing":
+                return false;
+            default:
+                return true;
         }
-        String s = st.trim();
-        if (s.equalsIgnoreCase("delivered") || s.equalsIgnoreCase("complete")) {
-            return false;
-        }
-        if (s.equalsIgnoreCase("cancelled") || s.equalsIgnoreCase("canceled")) {
-            return false;
-        }
-        return true;
     }
 
     private void handleNavigationFailure(String location) {
@@ -350,18 +414,40 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public void onRobotReady(boolean ready) {
-        if (ready) {
-            List<String> locs = robot.getLocations();
-            Log.d("TEMI_LOCATIONS", locs != null ? locs.toString() : "null");
+        if (!ready) return;
 
-            robot.hideTopBar(true);
-            getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-            robot.requestToBeKioskApp();
+        List<String> locs = robot.getLocations();
+        Log.d("TEMI_LOCATIONS", locs != null ? locs.toString() : "null");
+        robot.hideTopBar(true);
+        getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        robot.requestToBeKioskApp();
 
-            statusRef.setValue("idle");
-            locRef.setValue("none");
-            robotStateRef.setValue("idle");
-        }
+        // ✅ FIX: read Firebase state before resetting
+        robotStateRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snap) {
+                String currentState = snap.getValue(String.class);
+                boolean midDelivery = currentState != null &&
+                        (currentState.equals("moving") ||
+                                currentState.equals("arrived_pantry") ||
+                                currentState.equals("arrived_gaming"));
+
+                if (midDelivery) {
+                    // Keep existing state — mid-delivery crash recovery
+                    return;
+                }
+
+                // ✅ FIX: check closed rounds before going idle on startup
+                checkClosedRoundsAndDecide();
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                statusRef.setValue("idle");
+                locRef.setValue("none");
+                robotStateRef.setValue("idle");
+            }
+        });
     }
 
     @Override
