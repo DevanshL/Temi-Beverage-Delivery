@@ -201,13 +201,9 @@ public class MainActivity extends AppCompatActivity implements
         }
 
         if (equalsLoc(location, LOC_CHARGING)) {
-            statusRef.setValue("idle");
-            robotStateRef.setValue("idle");
-            statusText.setText(R.string.status_idle_home);
-            txtWaiting.setText(R.string.subtitle_idle);
-            txtWaiting.setVisibility(View.VISIBLE);
             hideGamingOk();
             locRef.setValue("none");
+            checkClosedRoundsAndDecide(false); // handles idle OR pantry
             return;
         }
 
@@ -293,56 +289,74 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     private void runPostGoodbyeOrdersDecision() {
-        ordersRef.addListenerForSingleValueEvent(new ValueEventListener() {
+        checkClosedRoundsAndDecide(true);
+    }
+
+    private void checkClosedRoundsAndDecide(boolean goHomeIfNone) {
+        roundsRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                boolean pending = hasPendingOrders(snapshot);
-                if (pending) {
+                String nextRoundId = null;
+                if (snapshot.exists()) {
+                    for (DataSnapshot roundSnap : snapshot.getChildren()) {
+                        String st = roundSnap.child("status").getValue(String.class);
+                        if ("closed".equalsIgnoreCase(st) || "locked".equalsIgnoreCase(st)) {
+                            nextRoundId = roundSnap.getKey();
+                            break;
+                        }
+                    }
+                }
+
+                if (nextRoundId != null) {
+                    Log.d("Nav", "Found round " + nextRoundId + " to deliver, heading to pantry");
+                    String roundSt = snapshot.child(nextRoundId).child("status").getValue(String.class);
+                    if ("closed".equalsIgnoreCase(roundSt)) {
+                        Map<String, Object> updates = new HashMap<>();
+                        updates.put("current_delivering_round", nextRoundId);
+                        updates.put("rounds/" + nextRoundId + "/status", "locked");
+                        FirebaseDatabase.getInstance().getReference().updateChildren(updates);
+                    }
+
                     statusRef.setValue("order_queue_next_leg_pantry");
                     locRef.setValue(LOC_PANTRY);
                 } else {
-                    statusRef.setValue("returning_home");
-                    locRef.setValue(LOC_CHARGING);
+                    Log.d("Nav", "No closed rounds found.");
+                    if (goHomeIfNone) {
+                        statusRef.setValue("returning_home");
+                        locRef.setValue(LOC_CHARGING);
+                    } else {
+                        statusRef.setValue("idle");
+                        robotStateRef.setValue("idle");
+                        locRef.setValue("none");
+                        if (statusText != null) statusText.setText(R.string.status_idle_home);
+                        if (txtWaiting != null) {
+                            txtWaiting.setText(R.string.subtitle_idle);
+                            txtWaiting.setVisibility(View.VISIBLE);
+                        }
+                    }
                 }
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                statusRef.setValue("orders_read_failed_returning_home");
-                locRef.setValue(LOC_CHARGING);
+                if (goHomeIfNone) {
+                    statusRef.setValue("returning_home");
+                    locRef.setValue(LOC_CHARGING);
+                } else {
+                    statusRef.setValue("idle");
+                    robotStateRef.setValue("idle");
+                    locRef.setValue("none");
+                    if (statusText != null) statusText.setText(R.string.status_idle_home);
+                    if (txtWaiting != null) {
+                        txtWaiting.setText(R.string.subtitle_idle);
+                        txtWaiting.setVisibility(View.VISIBLE);
+                    }
+                }
             }
         });
     }
 
-    /**
-     * True if there is at least one order that still needs a pantry pickup / delivery cycle.
-     */
-    private static boolean hasPendingOrders(@Nullable DataSnapshot ordersSnapshot) {
-        if (ordersSnapshot == null || !ordersSnapshot.exists()) {
-            return false;
-        }
-        for (DataSnapshot child : ordersSnapshot.getChildren()) {
-            if (orderNeedsService(child)) {
-                return true;
-            }
-        }
-        return false;
-    }
 
-    private static boolean orderNeedsService(@NonNull DataSnapshot order) {
-        String st = order.child("status").getValue(String.class);
-        if (st == null || st.isEmpty()) {
-            return true;
-        }
-        String s = st.trim();
-        if (s.equalsIgnoreCase("delivered") || s.equalsIgnoreCase("complete")) {
-            return false;
-        }
-        if (s.equalsIgnoreCase("cancelled") || s.equalsIgnoreCase("canceled")) {
-            return false;
-        }
-        return true;
-    }
 
     private void handleNavigationFailure(String location) {
         isMoving = false;
@@ -375,9 +389,23 @@ public class MainActivity extends AppCompatActivity implements
             getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             robot.requestToBeKioskApp();
 
-            statusRef.setValue("idle");
-            locRef.setValue("none");
-            robotStateRef.setValue("idle");
+            robotStateRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot snap) {
+                    String currentState = snap.getValue(String.class);
+                    boolean midDelivery = currentState != null &&
+                        (currentState.equals("moving") ||
+                         currentState.equals("arrived_pantry") ||
+                         currentState.equals("arrived_gaming"));
+                    if (!midDelivery) {
+                        checkClosedRoundsAndDecide(false);
+                    }
+                }
+                @Override
+                public void onCancelled(@NonNull DatabaseError error) {
+                    checkClosedRoundsAndDecide(false);
+                }
+            });
         }
     }
 
