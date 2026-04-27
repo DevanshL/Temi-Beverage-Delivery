@@ -41,6 +41,43 @@
     .pop-bar-wrap { flex: 1; background: rgba(15,23,42,0.5); border-radius: 99px; height: 6px; overflow: hidden; }
     .pop-bar { height: 6px; border-radius: 99px; background: #0f6e56; }
     .section-sub { font-size: 0.72rem; color: #475569; text-transform: uppercase; letter-spacing: 0.08em; margin: 12px 0 8px; }
+    #adminConfirm {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(10,16,30,0.82);
+      display: none; align-items: center; justify-content: center; padding: 24px;
+    }
+    #adminConfirm.active { display: flex; }
+    #adminConfirmCard {
+      background: rgba(22,32,52,0.99);
+      border: 1px solid rgba(148,163,184,0.2);
+      border-radius: 20px; padding: 28px 24px;
+      max-width: 400px; width: 100%;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+    }
+    #adminConfirmTitle {
+      font-size: 1.05rem; font-weight: 600;
+      color: #f1f5f9; margin-bottom: 10px;
+    }
+    #adminConfirmBody {
+      font-size: 0.875rem; color: #94a3b8;
+      line-height: 1.65; margin-bottom: 24px;
+      white-space: pre-line;
+    }
+    .confirm-btn-row {
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    #adminConfirmOk {
+      padding: 13px; font-size: 0.95rem;
+      border-radius: 12px; font-weight: 600;
+    }
+    #adminConfirmCancel {
+      padding: 11px; font-size: 0.88rem;
+      border-radius: 12px;
+      background: transparent;
+      border: 1px solid rgba(148,163,184,0.2);
+      color: #64748b; cursor: pointer;
+    }
+    #adminConfirmCancel:hover { color: #94a3b8; border-color: rgba(148,163,184,0.35); }
   </style>
 </head>
 <body>
@@ -155,6 +192,18 @@
   </div>
 </div>
 
+<!-- Custom confirm dialog -->
+<div id="adminConfirm" role="dialog" aria-modal="true">
+  <div id="adminConfirmCard">
+    <div id="adminConfirmTitle">Confirm</div>
+    <div id="adminConfirmBody"></div>
+    <div class="confirm-btn-row">
+      <button type="button" class="btn btn-accent text-white" id="adminConfirmOk">OK</button>
+      <button type="button" id="adminConfirmCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal fade" id="notifModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content" style="background:rgba(30,41,59,0.95);color:#e2e8f0;border:1px solid rgba(148,163,184,0.2)">
@@ -179,6 +228,29 @@
   };
 
   const el = (id) => document.getElementById(id);
+
+  // ── Custom confirm dialog (replaces browser native confirm) ──
+  function adminConfirm(title, body, okLabel = "OK", cancelLabel = "Cancel") {
+    return new Promise(resolve => {
+      const overlay = document.getElementById("adminConfirm");
+      document.getElementById("adminConfirmTitle").textContent = title;
+      document.getElementById("adminConfirmBody").textContent = body;
+      document.getElementById("adminConfirmOk").textContent = okLabel;
+      document.getElementById("adminConfirmCancel").textContent = cancelLabel;
+      const cancelBtn = document.getElementById("adminConfirmCancel");
+      cancelBtn.style.display = cancelLabel ? "" : "none";
+      overlay.classList.add("active");
+      const ok = document.getElementById("adminConfirmOk");
+      const close = (result) => {
+        overlay.classList.remove("active");
+        ok.onclick = null;
+        cancelBtn.onclick = null;
+        resolve(result);
+      };
+      ok.onclick = () => close(true);
+      cancelBtn.onclick = () => close(false);
+    });
+  }
 
   function escapeHtml(s) { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
   function escapeHtmlAttr(s) { return String(s ?? "").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/'/g,"&#39;").replace(/</g,"&lt;"); }
@@ -508,7 +580,7 @@
       const updates = {};
       Object.keys(round.orderIds || {}).forEach(oid => { updates["orders/" + oid + "/status"] = "ongoing"; updates["orders/" + oid + "/startedAt"] = serverTimestamp(); });
       if (Object.keys(updates).length > 0) await update(ref(db, "/"), updates);
-    } catch (e) { console.error(e); alert("Start trip failed: " + e.message); }
+    } catch (e) { console.error(e); adminConfirm("Error", "Start trip failed: " + e.message, "OK", ""); }
   };
 
   window.dispatchRound = async function(roundId) {
@@ -516,7 +588,7 @@
       await set(ref(db, "location"), "gaming");
       await set(ref(db, "status"), "admin_dispatched_to_gaming");
       await update(ref(db, "rounds/" + roundId), { status: "delivering" });
-    } catch (e) { console.error(e); alert("Dispatch failed: " + e.message); }
+    } catch (e) { console.error(e); adminConfirm("Error", "Dispatch failed: " + e.message, "OK", ""); }
   };
 
   // Auto-close interval
@@ -676,7 +748,7 @@
     console.error(err);
     const code = err?.code||""; const msg = err?.message||String(err);
     const isPerm = code==="permission-denied"||/permission|PERMISSION_DENIED/i.test(msg);
-    alert(isPerm ? `Permission denied (${actionLabel}). Check Firebase rules. ${msg}` : `${actionLabel} failed: ${msg}`);
+    adminConfirm("Error", isPerm ? `Permission denied (${actionLabel}). Check Firebase rules. ${msg}` : `${actionLabel} failed: ${msg}`, "OK", "");
   }
 
   el("btnAddInventory").addEventListener("click", async () => {
@@ -686,12 +758,12 @@
     const category = el("addCategory").value;
     const qty = Math.max(0, Math.min(99999, Math.floor(Number(el("addQty").value)||0)));
     const imageUrl = (el("addImageUrl").value||"").trim();
-    if (!isValidSku(skuRaw)) { alert("SKU must use lowercase letters, numbers, underscores, hyphens."); return; }
-    if (!name) { alert("Name is required."); return; }
+    if (!isValidSku(skuRaw)) { adminConfirm("Invalid SKU", "SKU must use lowercase letters, numbers, underscores, hyphens.", "OK", ""); return; }
+    if (!name) { adminConfirm("Name required", "Name is required.", "OK", ""); return; }
     const btn = el("btnAddInventory"); btn.disabled = true;
     try {
       const snapNew = await get(ref(db, "inventory/" + skuRaw));
-      if (snapNew.val() != null) { alert(`SKU "${skuRaw}" already exists.`); return; }
+      if (snapNew.val() != null) { adminConfirm("SKU exists", `SKU "${skuRaw}" already exists.`, "OK", ""); return; }
       await set(ref(db, "inventory/" + skuRaw), { name, emoji, category, quantity: qty, customizable: false, imageUrl: imageUrl || "" });
       el("addSku").value=""; el("addName").value=""; el("addEmoji").value=""; el("addCategory").value="beverage"; el("addQty").value="10"; el("addImageUrl").value="";
     } catch (err) { inventoryPermAlert(err, "Add item"); } finally { btn.disabled = false; }
@@ -702,7 +774,8 @@
     const del = t.closest&&t.closest(".btn-inv-delete");
     if (del&&del.dataset.sku) {
       const sku=del.dataset.sku; const it=inventory[sku]||{}; const label=it.name||sku;
-      if (!confirm(`Remove "${label}" (${sku})?`)) return;
+      const delConfirmed = await adminConfirm("Remove item", `Remove "${label}" (${sku})?`, "Remove", "Cancel");
+      if (!delConfirmed) return;
       del.disabled=true;
       try { await remove(ref(db,"inventory/"+sku)); if(editingSku===sku)editingSku=null; } catch(err){inventoryPermAlert(err,"Delete item");} finally{del.disabled=false;}
       return;
@@ -718,7 +791,7 @@
       const emoji=row.querySelector(".inv-in-emoji")?.value?.trim()??"";
       const category=row.querySelector(".inv-in-category")?.value??"beverage";
       const imageUrl=row.querySelector(".inv-in-imageurl")?.value?.trim()??"";
-      if(!name){alert("Name required.");return;}
+      if(!name){adminConfirm("Name required", "Name is required.", "OK", "");return;}
       saveBtn.disabled=true;
       try{await update(ref(db,"inventory/"+sku),{name,emoji,category,imageUrl:imageUrl||""});editingSku=null;renderInventory();}catch(err){inventoryPermAlert(err,"Save item");}finally{saveBtn.disabled=false;}
       return;

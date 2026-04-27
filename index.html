@@ -283,7 +283,7 @@
       const bodyEl = el("appDialogBody");
       const okBtn = el("appDialogOk");
       const cancelBtn = el("appDialogCancel");
-      if (!overlay || !titleEl || !bodyEl || !okBtn) { window.alert(message); return; }
+      if (!overlay || !titleEl || !bodyEl || !okBtn) { console.warn("AppDialog fallback:", message); return; }
       const variant = opts.variant === "error" ? "error" : "info";
       titleEl.textContent = opts.title || "Notice";
       bodyEl.textContent = message || "";
@@ -305,7 +305,7 @@
         const bodyEl = el("appDialogBody");
         const okBtn = el("appDialogOk");
         const cancelBtn = el("appDialogCancel");
-        if (!overlay || !titleEl || !bodyEl || !okBtn) { resolve(window.confirm(message)); return; }
+        if (!overlay || !titleEl || !bodyEl || !okBtn) { console.warn("AppConfirm fallback:", message); resolve(false); return; }
         titleEl.textContent = title || "Confirm";
         bodyEl.textContent = message || "";
         overlay.classList.add("app-dialog--info");
@@ -576,11 +576,10 @@
           ? `<div class="status-order-label">Delivery ${index + 1} of ${total}</div>`
           : "";
         const modifyBtn = card.canModify
-          ? `<button class="btn btn-sm btn-outline-warning mt-2"
-               style="font-size:0.78rem;padding:4px 12px"
-               onclick="modifyRoundOrders('${card.rId}')">
-               Modify order
-             </button>`
+          ? `<div class="d-flex gap-2 mt-2">
+               <button class="btn btn-sm btn-outline-warning" style="font-size:0.78rem;padding:4px 12px" onclick="modifyRoundOrders('${card.rId}')">Modify</button>
+               <button class="btn btn-sm btn-outline-danger" style="font-size:0.78rem;padding:4px 12px" onclick="cancelRoundOrders('${card.rId}')">Cancel</button>
+             </div>`
           : "";
         div.innerHTML = labelHTML +
           `<div class="status-title">${card.icon} ${card.title}</div>` +
@@ -595,10 +594,10 @@
     window.modifyRoundOrders = async function(roundId) {
       if (!db) return;
 
-      const myRoundOrders = myOrders.filter(o =>
-        o.roundId === roundId &&
-        (o.status || "pending").toLowerCase() === "pending"
-      );
+      const myRoundOrders = myOrders.filter(o => {
+        const st = (o.status || "pending").toLowerCase();
+        return o.roundId === roundId && (st === "pending" || st === "");
+      });
       if (myRoundOrders.length === 0) return;
 
       // Double-check round is still open
@@ -660,6 +659,48 @@
       updateCartUi();
       renderCatalog();
       el("rowBeverages")?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    window.cancelRoundOrders = async function(roundId) {
+      if (!db) return;
+      const myRoundOrders = myOrders.filter(o => {
+        const st = (o.status || "pending").toLowerCase();
+        return o.roundId === roundId && (st === "pending" || st === "");
+      });
+      if (myRoundOrders.length === 0) return;
+      const rd = allRounds[roundId] || {};
+      if (rd.status !== "open") {
+        showAppDialog("This order can no longer be cancelled — Temi is already collecting.", { title: "Too late to cancel", variant: "info" });
+        return;
+      }
+      const proceed = await showAppConfirm("Cancel order", "Are you sure you want to cancel your order?");
+      if (!proceed) return;
+
+      const mergedItems = {};
+      myRoundOrders.forEach(o => {
+        Object.entries(o.items || {}).forEach(([sku, qty]) => { mergedItems[sku] = (mergedItems[sku] || 0) + Number(qty); });
+      });
+
+      for (const order of myRoundOrders) {
+        try {
+          await applyInventoryDeltaOrThrow(negateInventoryDelta(positiveItemCounts(order.items || {})));
+          await update(ref(db, "orders/" + order.id), { status: "cancelled", cancelledAt: serverTimestamp() });
+          await set(ref(db, "rounds/" + roundId + "/orderIds/" + order.id), null);
+        } catch (e) { console.error("Cancel failed", e); }
+      }
+
+      await runTransaction(ref(db, "rounds/" + roundId), rd => {
+        if (!rd) return rd;
+        rd.activeOrderCount = Math.max(0, (rd.activeOrderCount || 0) - myRoundOrders.length);
+        rd.itemManifest = rd.itemManifest || {};
+        Object.entries(mergedItems).forEach(([sku, qty]) => { rd.itemManifest[sku] = Math.max(0, (rd.itemManifest[sku] || 0) - qty); });
+        return rd;
+      });
+
+      const queue = loadOrderQueue();
+      const cancelledIds = myRoundOrders.map(o => o.id);
+      saveOrderQueue(queue.filter(id => !cancelledIds.includes(id)));
+      showAppDialog("Your order was cancelled.", { title: "Order Cancelled", variant: "info" });
     };
 
     // ── History UI ──
@@ -783,6 +824,17 @@
       }
     };
 
+    async function cleanStaleQueue(db) {
+      const q = loadOrderQueue();
+      if (!q.length) return;
+      try {
+        const snap = await get(ref(db, "orders"));
+        const all = snap.val() || {};
+        const valid = q.filter(id => all[id]);
+        if (valid.length !== q.length) saveOrderQueue(valid);
+      } catch (e) { console.error(e); }
+    }
+
     // ── Firebase listeners ──
     function startActiveListeners(db) {
       if (ordersUnsubscribe) return;
@@ -802,6 +854,7 @@
             if (["cancelled", "canceled"].includes(st) && queue.includes(child.key)) {
               saveOrderQueue(queue.filter(id => id !== child.key));
               archiveOrder(child.key, data, "cancelled");
+              showAppDialog("Your order was cancelled.", { title: "Order Cancelled", variant: "info" });
               return; // ✅ don't add to active rows
             }
 
@@ -1020,7 +1073,7 @@
       updateCartUi();
       onValue(ref(db, "inventory"), (snap) => { mergeRemoteInventory(snap.val()); clampCartToStock(); renderCatalog(); updateCartUi(); }, (err) => { console.error(err); showFirebaseError("Could not read inventory."); inventory = { ...DEFAULT_INVENTORY }; renderCatalog(); });
       try { const legacy = sessionStorage.getItem("temi_active_order_id"); if (legacy && !loadOrderQueue().includes(legacy)) { addOrderToQueue(legacy); } sessionStorage.removeItem("temi_active_order_id"); } catch {}
-      startActiveListeners(db);
+      cleanStaleQueue(db).then(() => startActiveListeners(db));
     } else {
       inventory = { ...DEFAULT_INVENTORY }; renderCatalog(); updateCartUi();
     }

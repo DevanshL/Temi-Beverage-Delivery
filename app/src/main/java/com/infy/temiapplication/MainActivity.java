@@ -210,7 +210,7 @@ public class MainActivity extends AppCompatActivity implements
                 boolean hasQueuedRound = false;
                 for (DataSnapshot child : roundsSnap.getChildren()) {
                     String st = child.child("status").getValue(String.class);
-                    if ("closed".equals(st)) {
+                    if ("closed".equalsIgnoreCase(st) || "locked".equalsIgnoreCase(st)) {
                         hasQueuedRound = true;
                         break;
                     }
@@ -326,7 +326,7 @@ public class MainActivity extends AppCompatActivity implements
                 boolean hasQueuedRound = false;
                 for (DataSnapshot child : roundsSnap.getChildren()) {
                     String st = child.child("status").getValue(String.class);
-                    if ("closed".equals(st)) {
+                    if ("closed".equalsIgnoreCase(st) || "locked".equalsIgnoreCase(st)) {
                         hasQueuedRound = true;
                         break;
                     }
