@@ -2,15 +2,19 @@
     <string name="app_name">TemiApplication</string>
     <string name="status_idle_home">At charging — idle</string>
     <string name="subtitle_idle">Temi Butler — ready for orders</string>
-    <string name="status_arrived_pantry">Arrived at pantry — load items</string>
+    <string name="status_arrived_pantry">Arrived at pantry</string>
     <string name="subtitle_waiting_pantry">Waiting for staff to load tray</string>
-    <string name="status_arrived_gaming">Arrived at gaming zone</string>
-    <string name="subtitle_collect">Collect your order, then tap OK</string>
-    <string name="btn_ok_collect">OK — I collected my order</string>
-    <string name="tts_gaming_delivery">Hello! I am Temi Butler. Please collect your order and press OK.</string>
-    <string name="tts_gaming_goodbye">Thank you for your order. Good bye !</string>
+    <string name="status_arrived_gaming">Order delivered!</string>
+    <string name="subtitle_collect">Collecting in: %1$ds</string>
+    <string name="status_patrol">Patrolling — %1$s</string>
+    <string name="subtitle_patrol">Collecting in: %1$ds</string>
+    <string name="tts_gaming_delivery">Hello! I am Temi Butler. Your order has arrived. Please collect your items.</string>
+    <string name="tts_gaming_patrol">Hello! Your order is here. Please collect your items from Temi.</string>
+    <string name="tts_gaming_goodbye">Thank you for your order. Good bye!</string>
     <string name="status_preparing">PREPARING…</string>
     <string name="status_moving_to">MOVING TO %1$s</string>
     <string name="status_arrived_generic">ARRIVED AT %1$s</string>
     <string name="status_blocked">BLOCKED — RETRYING</string>
+    <string name="status_staging">At staging — standby</string>
+    <string name="subtitle_staging">Temi Butler — ready for orders</string>
 </resources>

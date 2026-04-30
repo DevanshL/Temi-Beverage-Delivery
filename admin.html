@@ -41,6 +41,7 @@
     .pop-bar-wrap { flex: 1; background: rgba(15,23,42,0.5); border-radius: 99px; height: 6px; overflow: hidden; }
     .pop-bar { height: 6px; border-radius: 99px; background: #0f6e56; }
     .section-sub { font-size: 0.72rem; color: #475569; text-transform: uppercase; letter-spacing: 0.08em; margin: 12px 0 8px; }
+
     #adminConfirm {
       position: fixed; inset: 0; z-index: 9999;
       background: rgba(10,16,30,0.82);
@@ -133,6 +134,9 @@
               <option value="home base">home base</option>
               <option value="pantry">pantry</option>
               <option value="gaming">gaming</option>
+              <option value="gaming1">gaming1</option>
+              <option value="gaming2">gaming2</option>
+              <option value="staging">staging</option>
             </select>
             <button type="button" class="btn btn-accent text-white" id="btnSendManual">Go</button>
           </div>
@@ -192,18 +196,6 @@
   </div>
 </div>
 
-<!-- Custom confirm dialog -->
-<div id="adminConfirm" role="dialog" aria-modal="true">
-  <div id="adminConfirmCard">
-    <div id="adminConfirmTitle">Confirm</div>
-    <div id="adminConfirmBody"></div>
-    <div class="confirm-btn-row">
-      <button type="button" class="btn btn-accent text-white" id="adminConfirmOk">OK</button>
-      <button type="button" id="adminConfirmCancel">Cancel</button>
-    </div>
-  </div>
-</div>
-
 <div class="modal fade" id="notifModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content" style="background:rgba(30,41,59,0.95);color:#e2e8f0;border:1px solid rgba(148,163,184,0.2)">
@@ -229,7 +221,7 @@
 
   const el = (id) => document.getElementById(id);
 
-  // ── Custom confirm dialog (replaces browser native confirm) ──
+  // ── Custom confirm dialog ──
   function adminConfirm(title, body, okLabel = "OK", cancelLabel = "Cancel") {
     return new Promise(resolve => {
       const overlay = document.getElementById("adminConfirm");
@@ -251,6 +243,7 @@
       cancelBtn.onclick = () => close(false);
     });
   }
+
 
   function escapeHtml(s) { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
   function escapeHtmlAttr(s) { return String(s ?? "").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/'/g,"&#39;").replace(/</g,"&lt;"); }
@@ -308,6 +301,7 @@
   let inventory = {};
   let currentRoundId = "";
   let currentDeliveringRound = "";
+  let patrolInProgress = false;
 
   onValue(ref(db, "status"), (snap) => { lastStatus = snap.val() || ""; el("temiStatus").textContent = lastStatus || "—"; renderRoundsPanel(); });
   onValue(ref(db, "location"), (snap) => { lastLocation = snap.val() || ""; el("temiLocation").textContent = lastLocation || "—"; });
@@ -315,6 +309,11 @@
   onValue(ref(db, "rounds"), (snap) => { allRounds = snap.val() || {}; renderRoundsPanel(); renderHistoryPanel(); });
   onValue(ref(db, "orders"), (snap) => { orders = snap.val() || {}; renderHistoryPanel(); }, () => {});
   onValue(ref(db, "current_round_id"), (snap) => { currentRoundId = snap.val() || ""; });
+  onValue(ref(db, "patrol_in_progress"), (snap) => {
+    patrolInProgress = Boolean(snap.val());
+    renderRoundsPanel();
+  });
+
   onValue(ref(db, "current_delivering_round"), (snap) => {
     currentDeliveringRound = snap.val() || "";
     const pill = el("deliveringPill");
@@ -328,6 +327,8 @@
   onValue(ref(db, "inventory"), (snap) => { inventory = snap.val() || {}; if (editingSku && !Object.prototype.hasOwnProperty.call(inventory, editingSku)) editingSku = null; renderInventory(); }, () => showErr("Could not read inventory."));
 
   function temiIsBusy() {
+    // ✅ Block if patrol in progress (manual or round delivery)
+    if (patrolInProgress) return true;
     const rs = String(lastRobotState || "").toLowerCase().trim();
     // arrived_pantry or arrived_gaming with no active delivery = Temi is free for next trip
     if (rs === "arrived_pantry" || rs === "arrived_gaming") {
@@ -580,7 +581,7 @@
       const updates = {};
       Object.keys(round.orderIds || {}).forEach(oid => { updates["orders/" + oid + "/status"] = "ongoing"; updates["orders/" + oid + "/startedAt"] = serverTimestamp(); });
       if (Object.keys(updates).length > 0) await update(ref(db, "/"), updates);
-    } catch (e) { console.error(e); adminConfirm("Error", "Start trip failed: " + e.message, "OK", ""); }
+    } catch (e) { console.error(e); alert("Start trip failed: " + e.message); }
   };
 
   window.dispatchRound = async function(roundId) {
@@ -588,7 +589,7 @@
       await set(ref(db, "location"), "gaming");
       await set(ref(db, "status"), "admin_dispatched_to_gaming");
       await update(ref(db, "rounds/" + roundId), { status: "delivering" });
-    } catch (e) { console.error(e); adminConfirm("Error", "Dispatch failed: " + e.message, "OK", ""); }
+    } catch (e) { console.error(e); alert("Dispatch failed: " + e.message); }
   };
 
   // Auto-close interval
@@ -748,7 +749,7 @@
     console.error(err);
     const code = err?.code||""; const msg = err?.message||String(err);
     const isPerm = code==="permission-denied"||/permission|PERMISSION_DENIED/i.test(msg);
-    adminConfirm("Error", isPerm ? `Permission denied (${actionLabel}). Check Firebase rules. ${msg}` : `${actionLabel} failed: ${msg}`, "OK", "");
+    alert(isPerm ? `Permission denied (${actionLabel}). Check Firebase rules. ${msg}` : `${actionLabel} failed: ${msg}`);
   }
 
   el("btnAddInventory").addEventListener("click", async () => {
@@ -758,12 +759,12 @@
     const category = el("addCategory").value;
     const qty = Math.max(0, Math.min(99999, Math.floor(Number(el("addQty").value)||0)));
     const imageUrl = (el("addImageUrl").value||"").trim();
-    if (!isValidSku(skuRaw)) { adminConfirm("Invalid SKU", "SKU must use lowercase letters, numbers, underscores, hyphens.", "OK", ""); return; }
-    if (!name) { adminConfirm("Name required", "Name is required.", "OK", ""); return; }
+    if (!isValidSku(skuRaw)) { alert("SKU must use lowercase letters, numbers, underscores, hyphens."); return; }
+    if (!name) { alert("Name is required."); return; }
     const btn = el("btnAddInventory"); btn.disabled = true;
     try {
       const snapNew = await get(ref(db, "inventory/" + skuRaw));
-      if (snapNew.val() != null) { adminConfirm("SKU exists", `SKU "${skuRaw}" already exists.`, "OK", ""); return; }
+      if (snapNew.val() != null) { alert(`SKU "${skuRaw}" already exists.`); return; }
       await set(ref(db, "inventory/" + skuRaw), { name, emoji, category, quantity: qty, customizable: false, imageUrl: imageUrl || "" });
       el("addSku").value=""; el("addName").value=""; el("addEmoji").value=""; el("addCategory").value="beverage"; el("addQty").value="10"; el("addImageUrl").value="";
     } catch (err) { inventoryPermAlert(err, "Add item"); } finally { btn.disabled = false; }
@@ -791,7 +792,7 @@
       const emoji=row.querySelector(".inv-in-emoji")?.value?.trim()??"";
       const category=row.querySelector(".inv-in-category")?.value??"beverage";
       const imageUrl=row.querySelector(".inv-in-imageurl")?.value?.trim()??"";
-      if(!name){adminConfirm("Name required", "Name is required.", "OK", "");return;}
+      if(!name){alert("Name required.");return;}
       saveBtn.disabled=true;
       try{await update(ref(db,"inventory/"+sku),{name,emoji,category,imageUrl:imageUrl||""});editingSku=null;renderInventory();}catch(err){inventoryPermAlert(err,"Save item");}finally{saveBtn.disabled=false;}
       return;

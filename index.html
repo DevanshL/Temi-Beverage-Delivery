@@ -420,6 +420,7 @@
     const LS_ORDER_QUEUE = "temi_order_queue";
     const LS_HISTORY = "temi_order_history";
 
+    // Generates a unique session ID and saves it to localStorage so we know which orders belong to this device.
     function getOrCreateSessionId() {
       let s = localStorage.getItem(LS_SESSION);
       if (!s) { s = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : "s-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10); localStorage.setItem(LS_SESSION, s); }
@@ -427,12 +428,14 @@
     }
     const sessionId = getOrCreateSessionId();
 
+    // Loads the active order IDs from local storage (queue of orders not yet completed).
     function loadOrderQueue() { try { const raw = localStorage.getItem(LS_ORDER_QUEUE); return raw ? JSON.parse(raw) : []; } catch { return []; } }
     function saveOrderQueue(ids) { localStorage.setItem(LS_ORDER_QUEUE, JSON.stringify(ids)); }
     function addOrderToQueue(orderId) { const q = loadOrderQueue(); if (!q.includes(orderId)) { q.push(orderId); saveOrderQueue(q); } }
 
     function loadOrderHistory() { try { return JSON.parse(localStorage.getItem(LS_HISTORY) || "[]"); } catch { return []; } }
     function saveOrderHistory(entries) { localStorage.setItem(LS_HISTORY, JSON.stringify(entries.slice(0, 20))); }
+    // Moves a completed or cancelled order from the active queue into the persistent local history.
     function archiveOrder(orderId, orderData, status) {
       const history = loadOrderHistory();
       if (history.find(o => o.id === orderId)) return;
@@ -443,6 +446,7 @@
       renderHistorySection();
     }
 
+    // Checks if an order belongs to the current user by comparing session IDs or checking the local queue.
     function isMyOrder(orderId, data) {
       if (!data) return false;
       if (data.sessionId === sessionId) return true;
@@ -461,6 +465,7 @@
     }
 
     // ── Catalog ──
+    // Renders the beverage and snack catalog, checking Firebase inventory to disable out-of-stock items.
     function renderCatalog() {
       const bev = el("rowBeverages"); const snk = el("rowSnacks");
       bev.innerHTML = ""; snk.innerHTML = "";
@@ -490,6 +495,7 @@
       updateCartUi(); renderCatalog();
     }
 
+    // Re-renders the shopping cart UI (item count, checkout button state) based on current selections.
     function updateCartUi() {
       const entries = Object.keys(cart).filter((k) => cart[k] > 0);
       const sum = entries.reduce((a, k) => a + cart[k], 0);
@@ -505,6 +511,7 @@
     }
 
     // ── Status bar ──
+    // Displays the "Active Orders" tracking banner at the top of the screen based on Temi\'s current state.
     function renderStatusBar() {
       const topBar = el("topStatusBar"); if (!topBar) return;
       topBar.innerHTML = "";
@@ -543,7 +550,7 @@
         if (isDelivering && robotState === "arrived_gaming") {
           stateClass = "state-arrived"; icon = "🎉"; priority = 4;
           title = "Temi is here!";
-          subtitle = "Collect your order and press OK on Temi's screen";
+          subtitle = "Collect your order";
         } else if (isDelivering && robotState === "arrived_pantry") {
           stateClass = "state-pantry"; icon = "🤖"; priority = 3;
           title = "Almost there";
@@ -591,6 +598,7 @@
     }
 
     // ── Modify round orders — uses showAppConfirm instead of confirm() ──
+    // Puts an existing pending order back into "Edit Mode" by cancelling it and refilling the cart.
     window.modifyRoundOrders = async function(roundId) {
       if (!db) return;
 
@@ -607,7 +615,6 @@
         return;
       }
 
-      // ✅ FIX: replaced native confirm() with styled showAppConfirm()
       const proceed = await showAppConfirm(
         "Modify order",
         "This will cancel your current order so you can resubmit with changes. Your items will be pre-filled in the cart."
@@ -661,6 +668,7 @@
       el("rowBeverages")?.scrollIntoView({ behavior: "smooth" });
     };
 
+    // Cancels an active order entirely, returning its items back to the Firebase inventory.
     window.cancelRoundOrders = async function(roundId) {
       if (!db) return;
       const myRoundOrders = myOrders.filter(o => {
@@ -824,6 +832,7 @@
       }
     };
 
+    // On startup, removes any order IDs from local storage that no longer exist in the Firebase database.
     async function cleanStaleQueue(db) {
       const q = loadOrderQueue();
       if (!q.length) return;
@@ -836,6 +845,7 @@
     }
 
     // ── Firebase listeners ──
+    // Listens to Firebase for changes in Orders, Rounds, and Robot State to update the UI in real-time.
     function startActiveListeners(db) {
       if (ordersUnsubscribe) return;
       ordersUnsubscribe = onValue(ref(db, "orders"), (snap) => {
@@ -968,6 +978,7 @@
     }
 
     // ── Submit order ──
+    // Handles the checkout process: deducts inventory, creates an order in Firebase, and assigns it to a round.
     async function submitOrder(db) {
       const items = positiveItemCounts(cart);
       if (Object.keys(items).length === 0) return;

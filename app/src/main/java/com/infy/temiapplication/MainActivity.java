@@ -17,6 +17,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ServerValue;
 import com.google.firebase.database.ValueEventListener;
+import com.robotemi.sdk.BatteryData;
 import com.robotemi.sdk.Robot;
 import com.robotemi.sdk.TtsRequest;
 import com.robotemi.sdk.listeners.OnGoToLocationStatusChangedListener;
@@ -84,9 +85,6 @@ public class MainActivity extends AppCompatActivity implements
     private int      countdownValue     = 0;
     private Runnable countdownRunnable  = null;
     private String   currentPatrolRound = "";
-
-    // ── Charging state ──
-    private boolean  isAtChargingStation = false;
 
     // ─────────────────────────────────────────────────────────────
     // Lifecycle
@@ -338,7 +336,6 @@ public class MainActivity extends AppCompatActivity implements
 
         // ── Pantry ──
         if (equalsLoc(location, LOC_PANTRY)) {
-            isAtChargingStation = false;
             clearPatrolState(); // ✅ FIX BUG2: clear ghost patrol state
             statusRef.setValue("arrived_pantry");
             robotStateRef.setValue("arrived_pantry");
@@ -362,7 +359,6 @@ public class MainActivity extends AppCompatActivity implements
 
         // ── Home base ──
         if (equalsLoc(location, LOC_CHARGING)) {
-            isAtChargingStation = true;
             clearPatrolState();
             locRef.setValue("none");
             statusRef.setValue("idle");
@@ -373,13 +369,14 @@ public class MainActivity extends AppCompatActivity implements
                 txtWaiting.setVisibility(View.VISIBLE);
                 txtCountdown.setVisibility(View.GONE);
             });
-            startBatteryMonitor(); // Monitor battery to auto-resume staging
+            // ✅ FIX BUG1: do NOT call checkClosedRoundsAndDecide here
+            // that would trigger decideStageOrHome → battery still low → loop back here forever
+            // Temi arrived home to charge — just stay idle
             return;
         }
 
         // ── Staging ──
         if (equalsLoc(location, LOC_STAGING)) {
-            isAtChargingStation = false;
             clearPatrolState(); // ✅ FIX BUG2: clear ghost patrol state
             statusRef.setValue("idle_staging");
             robotStateRef.setValue("idle");
@@ -395,7 +392,6 @@ public class MainActivity extends AppCompatActivity implements
         }
 
         // ── Generic ──
-        isAtChargingStation = false;
         locRef.setValue("none");
         statusRef.setValue("Arrived at " + location);
         runOnUiThread(() -> {
@@ -409,27 +405,88 @@ public class MainActivity extends AppCompatActivity implements
     // ─────────────────────────────────────────────────────────────
 
     private void handlePatrolArrival(String location) {
-        isAtChargingStation = false;
         Log.d("Patrol", "Arrived: " + location + " index=" + patrolStopIndex);
         statusRef.setValue("arrived_gaming");
         robotStateRef.setValue("arrived_gaming");
         locRef.setValue("none");
 
-        if (equalsLoc(location, LOC_GAMING) && !patrolInProgress) {
-            // First arrival at gaming — read round ID and begin patrol
+        if (!patrolInProgress) {
+            // First arrival at any patrol stop — check if active round exists
             currentDeliveringRoundRef.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(@NonNull DataSnapshot snap) {
                     String rid = snap.getValue(String.class);
-                    beginPatrol(rid != null ? rid.trim() : "");
+                    String resolvedRid = (rid != null && !rid.trim().isEmpty()) ? rid.trim() : "";
+                    Log.d("Patrol", "Arrived " + location + " roundId='" + resolvedRid + "'");
+
+                    if (!resolvedRid.isEmpty()) {
+                        // ── ROUND MODE: active round exists — full patrol from gaming ──
+                        if (equalsLoc(location, LOC_GAMING)) {
+                            beginPatrol(resolvedRid);
+                        } else {
+                            // Admin sent directly to gaming1/gaming2 mid-round — begin full patrol from gaming
+                            Log.d("Patrol", "Manual send to " + location + " with active round — routing to gaming");
+                            startNavigationSequence(LOC_GAMING);
+                        }
+                    } else {
+                        // ── MANUAL MODE: no active round — single stop dwell then go staging ──
+                        Log.d("Patrol", "Manual mode at " + location + " — single dwell then staging");
+                        startManualDwell(location);
+                    }
                 }
                 @Override
-                public void onCancelled(@NonNull DatabaseError e) { beginPatrol(""); }
+                public void onCancelled(@NonNull DatabaseError e) {
+                    Log.e("Patrol", "Failed to read current_delivering_round");
+                    startManualDwell(location);
+                }
             });
         } else {
             // Already in patrol (gaming1 or gaming2) — dwell here
             runOnUiThread(this::startDwellCountdown);
         }
+    }
+
+    /**
+     * Manual mode — no active round.
+     * Dwell 45s at this single location, announce items, then return to staging.
+     */
+    private void startManualDwell(String location) {
+        patrolInProgress = false;
+        stopCountdown();
+        countdownValue = PATROL_DWELL_SEC;
+
+        runOnUiThread(() -> {
+            robot.cancelAllTtsRequests();
+            robot.speak(TtsRequest.create(getString(R.string.tts_gaming_patrol), false));
+
+            statusText.setText(R.string.status_arrived_gaming);
+            txtWaiting.setText(getString(R.string.subtitle_collect, countdownValue));
+            txtWaiting.setVisibility(View.VISIBLE);
+            txtCountdown.setText(String.valueOf(countdownValue));
+            txtCountdown.setVisibility(View.VISIBLE);
+
+            Log.d("Patrol", "Manual dwell at " + location + " — " + PATROL_DWELL_SEC + "s");
+
+            countdownRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    countdownValue--;
+                    if (countdownValue > 0) {
+                        txtCountdown.setText(String.valueOf(countdownValue));
+                        txtWaiting.setText(getString(R.string.subtitle_collect, countdownValue));
+                        navHandler.postDelayed(this, 1000);
+                    } else {
+                        txtCountdown.setVisibility(View.GONE);
+                        // Manual mode done — go back to staging
+                        Log.d("Patrol", "Manual dwell done — returning to staging");
+                        robot.cancelAllTtsRequests();
+                        robot.speak(TtsRequest.create(getString(R.string.tts_gaming_goodbye), false));
+                        navHandler.postDelayed(() -> decideStageOrHome(), 1800);
+                    }
+                }
+            };
+            navHandler.postDelayed(countdownRunnable, 1000);
+        });
     }
 
     private void beginPatrol(String roundId) {
@@ -506,11 +563,28 @@ public class MainActivity extends AppCompatActivity implements
             patrolInProgressRef.setValue(false);
             patrolIndexRef.setValue(0);
 
-            // Mark round complete in Firebase
-            markRoundComplete(currentPatrolRound, () -> {
-                robot.cancelAllTtsRequests();
-                robot.speak(TtsRequest.create(getString(R.string.tts_gaming_goodbye), false));
-                navHandler.postDelayed(this::runPostGoodbyeOrdersDecision, 1800);
+            // ✅ FIX: Read round ID fresh from Firebase — don't rely on local variable
+            // currentPatrolRound can be empty if app restarted mid-patrol
+            currentDeliveringRoundRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot snap) {
+                    String rid = snap.getValue(String.class);
+                    String roundId = (rid != null && !rid.trim().isEmpty()) ? rid.trim() : currentPatrolRound;
+                    Log.d("Patrol", "markRoundComplete — roundId=" + roundId);
+                    markRoundComplete(roundId, () -> {
+                        robot.cancelAllTtsRequests();
+                        robot.speak(TtsRequest.create(getString(R.string.tts_gaming_goodbye), false));
+                        navHandler.postDelayed(MainActivity.this::runPostGoodbyeOrdersDecision, 1800);
+                    });
+                }
+                @Override
+                public void onCancelled(@NonNull DatabaseError e) {
+                    markRoundComplete(currentPatrolRound, () -> {
+                        robot.cancelAllTtsRequests();
+                        robot.speak(TtsRequest.create(getString(R.string.tts_gaming_goodbye), false));
+                        navHandler.postDelayed(MainActivity.this::runPostGoodbyeOrdersDecision, 1800);
+                    });
+                }
             });
         }
     }
@@ -520,10 +594,13 @@ public class MainActivity extends AppCompatActivity implements
      * Called ONLY after gaming2 patrol stop finishes.
      */
     private void markRoundComplete(String rid, Runnable onDone) {
+        Log.d("Patrol", "markRoundComplete called — rid: '" + rid + "'");
         if (rid == null || rid.isEmpty()) {
+            Log.e("Patrol", "markRoundComplete: rid is EMPTY — orders NOT marked complete!");
             runOnUiThread(() -> { if (onDone != null) onDone.run(); });
             return;
         }
+        statusRef.setValue("Finishing delivery round...");
         roundsRef.child(rid).child("orderIds").addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snap) {
@@ -531,15 +608,19 @@ public class MainActivity extends AppCompatActivity implements
                 if (snap.exists()) {
                     for (DataSnapshot idSnap : snap.getChildren()) {
                         String oId = idSnap.getKey();
-                        updates.put("orders/" + oId + "/status", "complete");
-                        updates.put("orders/" + oId + "/completedAt", ServerValue.TIMESTAMP);
+                        if (oId != null) {
+                            updates.put("orders/" + oId + "/status", "complete");
+                            updates.put("orders/" + oId + "/completedAt", ServerValue.TIMESTAMP);
+                        }
                     }
                 }
                 updates.put("rounds/" + rid + "/status", "done");
+                updates.put("rounds/" + rid + "/completedAt", ServerValue.TIMESTAMP);
                 updates.put("current_delivering_round", "");
                 updates.put("active_order_id", "");
                 FirebaseDatabase.getInstance().getReference().updateChildren(updates, (err, ref) -> {
                     if (err != null) Log.e("Patrol", "markRoundComplete failed: " + err.getMessage());
+                    else Log.d("Patrol", "Round " + rid + " marked done successfully.");
                     runOnUiThread(() -> { if (onDone != null) onDone.run(); });
                 });
             }
@@ -643,7 +724,16 @@ public class MainActivity extends AppCompatActivity implements
                     robotStateRef.setValue("moving");
                     locRef.setValue(LOC_PANTRY);
                 } else {
-                    decideStageOrHome();
+                    // ✅ FIX: no pending rounds — stay idle at current position
+                    // decideStageOrHome() only called after patrol ends, not on startup
+                    statusRef.setValue("idle");
+                    robotStateRef.setValue("idle");
+                    locRef.setValue("none");
+                    runOnUiThread(() -> {
+                        statusText.setText(R.string.status_idle_home);
+                        txtWaiting.setText(R.string.subtitle_idle);
+                        txtWaiting.setVisibility(View.VISIBLE);
+                    });
                 }
             }
             @Override
@@ -657,7 +747,7 @@ public class MainActivity extends AppCompatActivity implements
 
     private void decideStageOrHome() {
         try {
-            Robot.BatteryData data = robot.getBatteryData();
+            BatteryData data = robot.getBatteryData();
             if (data == null) {
                 Log.w("Battery", "null — defaulting to staging");
                 statusRef.setValue("going_to_staging");
@@ -698,29 +788,16 @@ public class MainActivity extends AppCompatActivity implements
 
     private void checkBatteryAndAct() {
         try {
-            Robot.BatteryData data = robot.getBatteryData();
+            BatteryData data = robot.getBatteryData();
             if (data == null) { startBatteryMonitor(); return; }
             int pct = data.getBatteryPercentage();
             Log.d("Battery", pct + "%");
-            
-            if (isAtChargingStation) {
-                statusRef.setValue("idle_charging_battery_" + pct + "pct");
-                if (pct >= 80) {
-                    statusRef.setValue("charged_going_to_staging");
-                    robotStateRef.setValue("moving");
-                    locRef.setValue(LOC_STAGING);
-                } else {
-                    startBatteryMonitor();
-                }
+            statusRef.setValue("idle_staging_battery_" + pct + "pct");
+            if (pct <= BATTERY_LOW_PCT) {
+                statusRef.setValue("low_battery_returning_home");
+                locRef.setValue(LOC_CHARGING);
             } else {
-                statusRef.setValue("idle_staging_battery_" + pct + "pct");
-                if (pct <= BATTERY_LOW_PCT) {
-                    statusRef.setValue("low_battery_returning_home");
-                    robotStateRef.setValue("moving");
-                    locRef.setValue(LOC_CHARGING);
-                } else {
-                    startBatteryMonitor();
-                }
+                startBatteryMonitor();
             }
         } catch (Exception e) {
             Log.e("Battery", e.getMessage());
